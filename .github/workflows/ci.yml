@@ -18,17 +18,14 @@ jobs:
   lint:
     name: Lint (JS/TS/CSS)
     runs-on: ubuntu-latest
-    # NOTE: PHP static checks (composer lint / analyse) run inside the wp-env
-    # container, so they are exercised by the `integration` job rather than
-    # here. This keeps `lint` a fast, container-free job.
+    # PHP static checks (composer lint / analyse) run in the unit-php job
+    # where PHP is available directly on the runner.
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      # NOTE: Phase 0 may not yet have a committed package-lock.json. `npm ci`
-      # requires a lockfile; once other agents commit one this is exact/repeatable.
       - run: npm ci
       - run: npm run lint:js
       - run: npm run lint:css
@@ -60,9 +57,12 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           tools: composer
+          coverage: xdebug
       - run: composer install --no-interaction --prefer-dist
-      # Runs PHP unit tests directly against host PHP (fine on GitHub runners;
-      # the local dev host lacks PHP and uses the container instead).
+      # Run PHP lint + static analysis directly on the runner (host PHP is
+      # available in CI, unlike the local dev host which uses the container).
+      - run: composer lint
+      - run: composer analyse
       - run: composer test:unit
 
   integration:
@@ -157,7 +157,6 @@ jobs:
           node-version-file: '.nvmrc'
           cache: 'npm'
       - run: npm ci
-      # Non-blocking for Phase 0: surface advisories without failing the build.
       - run: npm audit --audit-level=high || true
       - uses: shivammathur/setup-php@v2
         with:
