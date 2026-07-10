@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"target": "ESNext",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"lib": ["DOM", "DOM.Iterable", "ESNext"],
+		"jsx": "react-jsx",
+		"strict": true,
+		"esModuleInterop": true,
+		"noEmit": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"resolveJsonModule": true,
+		"allowJs": false,
+		"isolatedModules": true,
+		"types": ["jest"]
+	},
+	"include": ["src/**/*", "types/**/*", "tests/e2e/**/*"]
+}

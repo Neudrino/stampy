@@ -1,0 +1,10 @@
+parameters:
+	level: 8
+	paths:
+		- includes
+		- stampy.php
+		- uninstall.php
+	# The szepeviktor/phpstan-wordpress extension is auto-registered via
+	# phpstan/extension-installer, so no manual "includes" entry is required.
+	# Only treat PHPDoc types as certain when the runtime confirms them.
+	treatPhpDocTypesAsCertain: false
