@@ -166,3 +166,44 @@ Status: **COMPLETE** ✓
 - `.husky/pre-commit`: pipes through `cat` so `process.stdout.isTTY` is
   false, making wp-env auto-add `-T` to docker-compose (avoids "input device
   is not a TTY" in git hooks).
+
+---
+
+## Phase 1 — Test harness
+
+Status: **COMPLETE** ✓
+
+### Requirements (from PLAN.md §9 Phase 1)
+- [x] 4 suites (Jest/Playwright in TS) + smoke tests
+- [x] CI matrix (PHP 8.3/8.4, WP 7.0/latest)
+- [x] Plugin Check in CI
+
+### Verification targets
+- [x] All suites green locally: `validate:fast` + `validate:docker`
+- [ ] CI job green on first PR (deferred until repo push)
+
+### Manual demo
+- [x] `npm run env:clean:tests` resets `:8889` while `:8888` state survives
+
+### What was done
+- **Jest smoke tests** (`src/index.test.ts`): expanded from 1 to 3 tests —
+  version string, type check, export surface.
+- **PHP unit smoke tests** (`tests/phpunit/Unit/SmokeTest.php`): expanded from
+  2 to 3 tests — harness works, version string, namespace prefix.
+- **PHP integration smoke tests** (`tests/phpunit/Integration/PluginActivationTest.php`):
+  expanded from 1 to 4 tests — VERSION constant, PLUGIN_FILE constant,
+  bootstrap function exists, plugin file is readable.
+- **Playwright E2E smoke tests** (`tests/e2e/smoke.spec.ts`): replaced
+  placeholder `1+1=2` with 3 real tests — WP tests instance reachable via
+  REST API, plugin loaded (REST namespaces), Mailpit tests instance reachable.
+- **CI workflow** (`.github/workflows/ci.yml`): added `composer lint` +
+  `composer analyse` to the `unit-php` job (PHP is available on CI runners,
+  unlike the local host); removed stale Phase 0 comments.
+
+### Gotchas discovered
+- **Tests instance (:8889) has no active theme after integration test run** —
+  `wp-env clean tests` resets the DB, which un-activates the theme. E2E
+  tests that check front-end HTML fail. Fix: use the REST API
+  (`?rest_route=/`) which is always available regardless of theme state.
+- **Tests instance doesn't have pretty permalinks** — `?rest_route=/` must
+  be used instead of `/wp-json/`.
