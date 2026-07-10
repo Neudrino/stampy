@@ -159,3 +159,10 @@ Status: **COMPLETE** ✓
 - `test:unit:js` script: added `--testPathIgnorePatterns` for `/tests/e2e/`
   and `/.wp-env-home/` (prevents Jest from trying to run Playwright specs and
   scanning WP core).
+- `dev/mu-plugins/stampy-dev-mailer.php`: added `wp_mail_from` filter
+  (`wordpress@example.com`) — WP 7.0 generates `wordpress@localhost` as the
+  default From, which fails PHPMailer's domain validator and causes `wp_mail`
+  to return false before `phpmailer_init` ever fires.
+- `.husky/pre-commit`: pipes through `cat` so `process.stdout.isTTY` is
+  false, making wp-env auto-add `-T` to docker-compose (avoids "input device
+  is not a TTY" in git hooks).

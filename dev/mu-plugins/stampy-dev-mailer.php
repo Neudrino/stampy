@@ -23,6 +23,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+add_filter(
+	'wp_mail_from',
+	/**
+	 * Ensure a valid From address so PHPMailer::setFrom() doesn't reject it.
+	 *
+	 * The default `wordpress@localhost` fails PHPMailer's domain validator
+	 * because `localhost` is not a valid RFC domain. This filter runs before
+	 * setFrom() in wp_mail(), so it prevents the early return false.
+	 *
+	 * @param string $from_email The default From email address.
+	 * @return string
+	 */
+	static fn ( $from_email ) => 'wordpress@example.com',
+	PHP_INT_MAX
+);
+
 add_action(
 	'phpmailer_init',
 	/**
