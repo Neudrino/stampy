@@ -23,6 +23,9 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **After adding/changing Composer deps**, run `composer install` inside the container:
   `npx wp-env run cli --env-cwd=wp-content/plugins/stampy composer install`
 - **After adding PHP classes**, run `composer dump-autoload` in the container to regenerate the PSR-4 autoloader.
+- **PHPCS `InterpolatedNotPrepared`** — table names in `$wpdb->prepare()` queries trigger this sniff. Use `phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared` ... `phpcs:enable` blocks around the query (NOT `// phpcs:ignore` on a separate line — that only covers the current line).
+- **PHPCS `DisallowShortTernary`** — `$row ?: null` is forbidden. Use `null !== $row ? $row : null`.
+- **PHPStan `wpdb::prepare()` expects `literal-string`** — any interpolated table name makes it `non-falsy-string`. These are false-positives; the baseline file suppresses them. After adding new repository methods with table interpolation, run `vendor/bin/phpstan analyse --memory-limit=512M --generate-baseline=phpstan-baseline.neon` to regenerate the baseline.
 - **Husky pre-commit hook pipes through `cat`** so `process.stdout.isTTY` is false, which makes wp-env auto-add `-T` to docker-compose. Without this, git hooks run with a pseudo-TTY that confuses wp-env's TTY detection → "input device is not a TTY".
 
 ## Testing
@@ -37,7 +40,7 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 ## Code style
 
 - PHPCS: `WordPress-Extra` + `WordPress-Docs`, text domain `stampy`, prefixes `stampy`/`Stampy`. `includes/*` excluded from file-name sniff (PSR-4).
-- PHPStan: level 8, scans `includes/`, `stampy.php`, `uninstall.php`.
+- PHPStan: level 8, scans `includes/`, `stampy.php`, `uninstall.php`. Uses `phpstan-baseline.neon` for `wpdb::prepare()` literal-string false-positives. `stubs/` dir has WP_CLI stub for PHPStan, excluded from PHPCS. `--memory-limit=512M` in the `composer analyse` script (default 128M is insufficient).
 - TypeScript: strict mode, `types: ["jest"]`.
 - **Do not add comments** unless explicitly asked.
 
