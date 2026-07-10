@@ -73,6 +73,10 @@ jobs:
       matrix:
         wp: [ '7.0', 'latest' ]
     # ubuntu-latest ships Docker preinstalled, which wp-env requires.
+    # WP_ENV_HOME must match the value baked into the npm scripts so that
+    # bare `npx wp-env run` commands find the running containers.
+    env:
+      WP_ENV_HOME: ./.wp-env-home
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -149,6 +153,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # vendor/ is gitignored, so the Plugin Check action's wp-env has no
+      # Composer autoloader. Install production deps on the runner first;
+      # wp-env mounts the plugin directory from the host, so vendor/ is
+      # visible inside the container.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+      - run: composer install --no-dev --optimize-autoloader
       # Official WordPress Plugin Check action. The repo root contains dev-only
       # files (tests, config, CI) that are not shipped in the production build.
       # We exclude them so Plugin Check only scrutinizes production code.
@@ -175,6 +188,9 @@ jobs:
             PLAN.md
             PROGRESS.md
             AGENTS.md
+            README.md
+            SECURITY.md
+            LICENSE
           ignore-warnings: 'true'
 
   audit:
