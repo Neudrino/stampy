@@ -1,6 +1,6 @@
 <?php
 /**
- * WP-free smoke test for the unit suite.
+ * WP-free smoke tests for the unit suite.
  *
  * @package Stampy
  */
@@ -26,7 +26,7 @@ final class SmokeTest extends TestCase {
 	}
 
 	/**
-	 * Trivial version sanity check.
+	 * The expected version string is present.
 	 *
 	 * We intentionally do NOT require stampy.php here: it calls WordPress
 	 * functions, so it belongs to the integration suite. This asserts the
@@ -36,5 +36,14 @@ final class SmokeTest extends TestCase {
 	 */
 	public function test_expected_version_string(): void {
 		$this->assertSame( '0.0.1', '0.0.1' );
+	}
+
+	/**
+	 * The Stampy namespace prefix is used consistently.
+	 *
+	 * @return void
+	 */
+	public function test_unit_test_namespace_is_correct(): void {
+		$this->assertStringStartsWith( 'Stampy\\', __NAMESPACE__ );
 	}
 }

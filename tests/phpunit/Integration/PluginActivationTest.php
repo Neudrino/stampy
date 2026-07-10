@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration test proving the plugin loads under WordPress.
+ * Integration smoke tests proving the plugin loads under WordPress.
  *
  * @package Stampy
  */
@@ -33,5 +33,39 @@ final class PluginActivationTest extends WP_UnitTestCase {
 			'The Stampy\\VERSION constant should be defined once the plugin loads.'
 		);
 		$this->assertSame( '0.0.1', \Stampy\VERSION );
+	}
+
+	/**
+	 * The PLUGIN_FILE constant points to the plugin's main file.
+	 *
+	 * @return void
+	 */
+	public function test_plugin_file_constant_is_defined(): void {
+		$this->assertTrue(
+			defined( 'Stampy\\PLUGIN_FILE' ),
+			'The Stampy\\PLUGIN_FILE constant should be defined.'
+		);
+		$this->assertFileExists( \Stampy\PLUGIN_FILE );
+	}
+
+	/**
+	 * The bootstrap function exists and is callable.
+	 *
+	 * @return void
+	 */
+	public function test_bootstrap_function_exists(): void {
+		$this->assertTrue(
+			function_exists( 'Stampy\\bootstrap' ),
+			'The Stampy\\bootstrap() function should exist.'
+		);
+	}
+
+	/**
+	 * The plugin's main file is readable.
+	 *
+	 * @return void
+	 */
+	public function test_plugin_file_is_readable(): void {
+		$this->assertFileIsReadable( \Stampy\PLUGIN_FILE );
 	}
 }
