@@ -1,0 +1,33 @@
+# Files and directories excluded from the distributed plugin zip.
+# The shipped artifact contains: stampy.php, uninstall.php, includes/,
+# build/, languages/, readme.txt, LICENSE, and the production vendor/ dir.
+
+/.git
+/.github
+/.wordpress-org
+/node_modules
+/src
+/tests
+/dev
+/.husky
+
+# Config / meta
+/.gitignore
+/.distignore
+/.nvmrc
+/.wp-env.json
+/composer.json
+/composer.lock
+/package.json
+/package-lock.json
+/tsconfig.json
+/phpcs.xml.dist
+/phpstan.neon.dist
+/phpunit.xml.dist
+/playwright.config.ts
+
+# Docs not needed in the plugin zip
+/README.md
+/PLAN.md
+/PROGRESS.md
+/SECURITY.md

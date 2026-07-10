@@ -1,0 +1,18 @@
+# Dependencies
+/node_modules/
+/vendor/
+
+# Build output (compiled assets are shipped, but not committed to git)
+/build/
+
+# Test / tooling artifacts
+/test-results/
+/playwright-report/
+/.phpunit.result.cache
+/coverage/
+
+# Editor / OS
+.DS_Store
+*.log
+.idea/
+.vscode/

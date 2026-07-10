@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+<ruleset name="Stampy">
+	<description>Coding standards for the Stampy WordPress plugin.</description>
+
+	<!-- Scan the current directory. -->
+	<file>.</file>
+
+	<!-- Directories and paths that should never be scanned. -->
+	<exclude-pattern>/vendor/</exclude-pattern>
+	<exclude-pattern>/node_modules/</exclude-pattern>
+	<exclude-pattern>/build/</exclude-pattern>
+
+	<!-- Only scan PHP files. -->
+	<arg name="extensions" value="php"/>
+
+	<!-- Show sniff codes, progress, and colored output. -->
+	<arg value="sp"/>
+	<arg name="colors"/>
+
+	<!-- Bump the memory limit so large rulesets do not exhaust PHP memory. -->
+	<ini name="memory_limit" value="512M"/>
+
+	<!-- Target PHP 8.3 and newer for any PHP version aware sniffs. -->
+	<config name="testVersion" value="8.3-"/>
+
+	<!-- WordPress-Extra: best practices + WordPress-Docs: documentation. -->
+	<rule ref="WordPress-Extra"/>
+	<rule ref="WordPress-Docs"/>
+
+	<!-- Enforce the correct text domain for all i18n functions. -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="stampy"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Global symbols must use one of the plugin's approved prefixes. -->
+	<rule ref="WordPress.NamingConventions.PrefixAllGlobals">
+		<properties>
+			<property name="prefixes" type="array">
+				<element value="stampy"/>
+				<element value="Stampy"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Advertise the minimum supported WordPress version to WP sniffs. -->
+	<config name="minimum_wp_version" value="7.0"/>
+
+	<!--
+		PSR-4 class files under includes/ do not follow the WordPress
+		"class-*.php" file naming convention, so exclude them from that sniff.
+	-->
+	<rule ref="WordPress.Files.FileName">
+		<exclude-pattern>includes/*</exclude-pattern>
+	</rule>
+</ruleset>
