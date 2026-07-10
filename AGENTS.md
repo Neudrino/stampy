@@ -17,7 +17,7 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 
 - **Host has no PHP/Composer.** All PHP commands run inside the wp-env container via `wp-env run cli`. Never call `php`, `composer`, or `phpunit` directly on the host.
 - **`@wordpress/env` must be v11+.** v10 hangs on Node 24 (got@11 download-stream `pipeline` never resolves). v11 works.
-- **`WP_ENV_HOME=./.wp-env-home` is baked into every `env:*` npm script.** This keeps wp-env state project-local. The `.wp-env-home/` dir is gitignored — don't remove the env var from scripts.
+- **`WP_ENV_HOME=./.wp-env-home` is baked into every `env:*` npm script.** This keeps wp-env state project-local. The `.wp-env-home/` dir is gitignored — don't remove the env var from scripts. **In CI workflows**, any bare `npx wp-env run` command (outside an npm script) must also set `WP_ENV_HOME` — set it as a job-level `env:` or the command can't find the running containers.
 - **Composer `phpunit` must be `vendor/bin/phpunit`.** A global phpunit v10 exists in the wp-env container and shadows the project's v9 if you use bare `phpunit`.
 - **PHPUnit integration mode is keyed on `STAMPY_TEST_INTEGRATION=1`**, not on `WP_PHPUNIT__DIR` (which wp-phpunit's autoloader always sets). The composer `test:integration` script sets it automatically.
 - **After adding/changing Composer deps**, run `composer install` inside the container:
@@ -70,3 +70,9 @@ Do not skip the manual testing offer or automatically move to the next phase wit
 ## CI
 
 GitHub Actions (`.github/workflows/ci.yml`) runs: lint (JS/TS/CSS), unit-js, unit-php (8.3 + 8.4 matrix), integration (WP 7.0 + latest matrix), e2e, build, plugin-check, audit. All use the same npm/composer scripts. Node version pinned via `.nvmrc`.
+
+### CI gotchas
+
+- **Bare `npx wp-env run` in CI needs `WP_ENV_HOME`.** The npm scripts set `WP_ENV_HOME=./.wp-env-home` inline, but any `npx wp-env run` command outside an npm script must set it too (job-level `env:`). Without it, wp-env can't find the containers and fails in ~1 second with "Environment not initialized".
+- **Plugin Check action needs `vendor/` on the host.** The `wordpress/plugin-check-action@v1` mounts the plugin directory from the host into its own wp-env. Since `vendor/` is gitignored, the autoloader is missing and the plugin fatals on activation (`Class "Stampy\Lifecycle" not found`). Fix: run `shivammathur/setup-php@v2` + `composer install --no-dev --optimize-autoloader` before the plugin-check action.
+- **Plugin Check excludes dev files.** The repo root contains dev-only files (tests, config, CI) that are not shipped in the production build. Use `exclude-directories`, `exclude-files`, and `ignore-warnings: 'true'` inputs on the plugin-check-action to exclude them. A more robust long-term fix would be to build the plugin first and run Plugin Check on the built artifact.
