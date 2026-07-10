@@ -45,11 +45,14 @@ if ( is_readable( $stampy_autoload ) ) {
 /**
  * Bootstraps the plugin.
  *
- * Intentionally minimal for Phase 0 — real subsystems (schema, REST, admin,
- * sending) are wired up in later phases.
+ * Registers lifecycle hooks and WP-CLI commands.
  */
 function bootstrap(): void {
-	// Phase 0: skeleton only. Nothing to boot yet.
+	Lifecycle::register();
+
+	if ( defined( 'WP_CLI' ) && WP_CLI ) {
+		\WP_CLI::add_command( 'stampy', Cli::class );
+	}
 }
 
 bootstrap();
