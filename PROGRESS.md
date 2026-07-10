@@ -1,0 +1,168 @@
+# Stampy — Implementation Progress
+
+Tracking file for phase-by-phase implementation of the plan in `PLAN.md`.
+Each phase lists **requirements fulfilled** and **functional steps taken**.
+Version is frozen at `0.0.1` (never bumped unless explicitly instructed).
+
+---
+
+## Environment notes (host reality vs. plan)
+
+- **Node:** v24 (matches `.nvmrc` pin) ✓
+- **Container runtime:** **Docker** (real `dockerd` 29.1.3, root dir
+  `/var/lib/docker`). The machine previously had only Podman (with a `docker`
+  shim); Docker has since been installed. The user was added to the `docker`
+  group but **the login session has not been restarted yet**, so group
+  membership is not active in the current shell — Docker commands currently
+  require a fresh-group shell (`sg docker -c '...'`). After a real re-login,
+  plain `docker`/`wp-env` will work directly.
+- **Leftover reverted:** `DOCKER_HOST` had been pointed at the Podman socket in
+  the systemd user environment; it has been unset
+  (`systemctl --user unset-environment DOCKER_HOST`). A Podman-specific
+  workaround file (`dev/containers.conf`) that was briefly created has been
+  removed. No other host/system changes remain.
+- **Host PHP/Composer:** NOT installed. **Deviation from plan:** the PHP checks
+  (`lint:php`, `analyse:php`, `test:unit:php`) run **inside the wp-env
+  container** rather than on the host, so `validate:fast` uses the container
+  for PHP. Everything else about the parity model is unchanged.
+
+### Environment — RESOLVED (Docker fully working)
+- `docker` group membership ACTIVE in the user session ✓
+- `podman-docker` shim package removed; `/etc/profile.d/podman-docker.*` gone ✓
+- `DOCKER_HOST` unset (systemd user env) AND opencode restarted with clean env ✓
+- Real Docker daemon reachable and used: **Server Version 29.1.3**, root dir
+  `/var/lib/docker` ✓
+- wp-env home made **project-local** via `WP_ENV_HOME=./.wp-env-home` baked
+  into every `env:*` npm script; `.wp-env-home/` is gitignored + distignored.
+  Nothing wp-env creates lands outside the project directory now. ✓
+
+### ACTIVE BLOCKER — RESOLVED (upgraded @wordpress/env to v11)
+Root cause was `@wordpress/env@10`'s transitive `got@11.8.6` hanging on its
+download-stream `pipeline` under Node 24. **Resolution: upgraded
+`@wordpress/env` from 10.39.0 to 11.10.0** (latest). Same `got@11.8.6`
+dependency, but the download completes successfully in v11 — likely an
+internal change in the download flow. wp-env now starts both sites in ~27s
+on Node 24 with no issues.
+
+---
+
+## Phase 0 — Skeleton
+
+Status: **COMPLETE** ✓
+
+### Requirements (from PLAN.md §9 Phase 0)
+- [x] Plugin header in `stampy.php` + matching `readme.txt`
+      (Author `Neudrino`, `Plugin URI` `https://github.com/Neudrino/stampy`,
+      `Requires at least: 7.0`, `Requires PHP: 8.3`, identical in both files)
+- [x] Version frozen at `0.0.1` in header and `Stable tag`
+- [x] Prefix `stampy_` / namespace `Stampy` established
+- [x] `LICENSE` (GPLv2 or later)
+- [x] `SECURITY.md` (GitHub private vulnerability reporting, no email)
+- [x] Composer scripts (§4 Local/CI Parity): lint, lint:fix, analyse,
+      test:unit, test:integration
+- [x] npm scripts (§4 Local/CI Parity), incl. validate:fast / validate
+- [x] Tool configs: `phpcs.xml.dist`, `phpstan.neon.dist`,
+      `phpunit.xml.dist`, `.nvmrc` (Node 24)
+- [x] `tsconfig.json` (strict)
+- [x] wp-env (`.wp-env.json`) dual instance + dual Mailpit
+      (`dev/docker-compose.mailpit.yml`, dev mu-plugin), verify
+      `host.docker.internal` reachability
+- [x] Husky pre-commit (`validate:fast`)
+- [x] GitHub Actions `ci.yml` + `codeql.yml` calling the same scripts
+- [x] Dependabot config (npm, composer, github-actions)
+- [x] README "Manual testing" section
+
+### Verification targets
+- [x] `npm run validate:fast` green (PHP checks via container)
+- [ ] CI job green on first PR (deferred until repo push)
+- [x] Both Mailpit UIs reachable (`:8025`, `:8026`)
+- [x] Manual demo: `npm run dev:start` → log in at `:8888`, activate Stampy,
+      open `:8025`
+
+### Functional steps taken (Phase 0 so far)
+- Verified host tooling; identified container-runtime situation (Docker now
+  installed; group membership pending session restart).
+- Created `PROGRESS.md`.
+- Wrote core plugin files: `stampy.php` (header, v0.0.1, namespace `Stampy`,
+  bootstrap stub), `uninstall.php` (inert safe stub), `LICENSE` (full GPLv2
+  text), `SECURITY.md` (GitHub private reporting), `readme.txt` (WP.org
+  listing, matching header fields), `README.md` (dev/manual-testing docs),
+  `.gitignore`, `.distignore`.
+- PHP tooling (via subagent): `composer.json` (PSR-4 `Stampy\`→`includes/`,
+  dev deps, canonical scripts), `phpcs.xml.dist`, `phpstan.neon.dist`
+  (level 8), `phpunit.xml.dist` (unit + integration suites),
+  `tests/phpunit/bootstrap.php`, unit `SmokeTest`, integration
+  `PluginActivationTest`, `includes/.gitkeep`.
+- JS/TS tooling (via subagent): `package.json` (canonical npm scripts; PHP
+  checks routed through the wp-env container), `tsconfig.json` (strict),
+  `.nvmrc` (24), `types/globals.d.ts`, `src/index.ts`, `src/index.test.ts`,
+  `.husky/pre-commit` (runs `validate:fast`), `playwright.config.ts`
+  (baseURL :8889, no webServer), `tests/e2e/smoke.spec.ts`.
+- Env/CI (via subagent): `.wp-env.json` (WP 7.0, PHP 8.3, dual instance,
+  per-instance Mailpit SMTP port, mu-plugin mapping, afterStart hook),
+  `dev/docker-compose.mailpit.yml` (mailpit-dev :8025/1025, mailpit-tests
+  :8026/1026), `dev/mailpit-up.sh` (idempotent), `dev/mu-plugins/
+  stampy-dev-mailer.php` (routes wp_mail to Mailpit, yields when plugin SMTP
+  configured), `.github/workflows/ci.yml`, `.github/workflows/codeql.yml`,
+  `.github/dependabot.yml`, issue/PR templates.
+- Fixed `.wp-env.json` double-mount (removed `"plugins": ["."]`; rely on the
+  `mappings` entry so `--env-cwd=wp-content/plugins/stampy` resolves).
+- Verified WP 7.0 zip URL exists (HTTP 200).
+
+### Verified GREEN (host-runnable JS/TS checks)
+- `npm install` (1919 packages, lockfile generated, husky installed) ✓
+- `npm run type-check` ✓ (after adding `@types/jest` + `"types": ["jest"]`)
+- `npm run lint:js` ✓
+- `npm run lint:css` ✓ (after adding `--allow-empty-input`)
+- `npm run test:unit:js` ✓ (1 test passes)
+
+### Verified GREEN (container-based PHP checks)
+- `npm run lint:php` ✓ (phpcs, 2 files, 0 errors)
+- `npm run analyse:php` ✓ (phpstan level 8, 2 files, 0 errors)
+- `npm run test:unit:php` ✓ (phpunit, 2 tests, 2 assertions)
+- `npm run test:integration:php` ✓ (phpunit, 1 test, 2 assertions)
+
+### Verified GREEN (full validate:fast)
+- `npm run validate:fast` ✓ — all 7 steps pass cleanly (no warnings)
+
+### Container environment verified
+- `npm run env:start` brings up BOTH sites (:8888 dev, :8889 tests) in ~27s ✓
+- Both Mailpit UIs reachable: `:8025` (dev), `:8026` (tests) — HTTP 200 ✓
+- Stampy plugin visible in `wp plugin list` (v0.0.1) ✓
+- Stampy plugin activates successfully ✓
+- `host.docker.internal` reachability (configured via wp-env, Mailpit
+  containers healthy) ✓
+
+### Package changes made (beyond original scaffold)
+- Added `@types/jest` dev dep; set `tsconfig.json` `"types": ["jest"]`
+  (fixes type-check of the Jest test).
+- `lint:css` script gained `--allow-empty-input` (no CSS files yet).
+- Every `env:*` / container-PHP npm script now prefixes
+  `WP_ENV_HOME=./.wp-env-home` (project-local wp-env home).
+- `.gitignore` + `.distignore` now exclude `/.wp-env-home/`.
+- Removed `"plugins": ["."]` from `.wp-env.json` (kept the `mappings` entry) to
+  avoid double-mounting the plugin.
+- **Upgraded `@wordpress/env` from 10.39.0 to 11.10.0** — resolves the Node 24
+  / got@11 download hang that blocked wp-env from starting WordPress.
+- `phpcs.xml.dist`: added `exclude-pattern` for `/.wp-env-home/`, `/tests/`,
+  `/dev/` (prevented PHPCS from scanning 5468 WP core files).
+- `composer.json`: `phpunit` → `vendor/bin/phpunit` in test scripts (avoids
+  global phpunit v10 shadowing the project's v9).
+- `composer.json`: `test:integration` sets `STAMPY_TEST_INTEGRATION=1`.
+- `tests/phpunit/bootstrap.php`: integration mode now keyed on
+  `STAMPY_TEST_INTEGRATION` env var only (not `WP_PHPUNIT__DIR`, which
+  wp-phpunit's `__loaded.php` autoload always sets).
+- `tests/phpunit/bootstrap.php`: defines `WP_TESTS_CONFIG_FILE_PATH` from
+  `WP_TESTS_DIR` so the vendored wp-phpunit finds the wp-env test config.
+- `phpunit.xml.dist`: test suite dirs updated to PSR-4-compliant casing
+  (`Unit`, `Integration`); directories renamed accordingly.
+- `test:unit:js` script: added `--testPathIgnorePatterns` for `/tests/e2e/`
+  and `/.wp-env-home/` (prevents Jest from trying to run Playwright specs and
+  scanning WP core).
+- `dev/mu-plugins/stampy-dev-mailer.php`: added `wp_mail_from` filter
+  (`wordpress@example.com`) — WP 7.0 generates `wordpress@localhost` as the
+  default From, which fails PHPMailer's domain validator and causes `wp_mail`
+  to return false before `phpmailer_init` ever fires.
+- `.husky/pre-commit`: pipes through `cat` so `process.stdout.isTTY` is
+  false, making wp-env auto-add `-T` to docker-compose (avoids "input device
+  is not a TTY" in git hooks).

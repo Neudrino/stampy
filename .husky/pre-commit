@@ -1,0 +1,1 @@
+npm run validate:fast 2>&1 | cat
