@@ -1,0 +1,32 @@
+# Mailpit instances for local Stampy development.
+# - mailpit-dev   captures mail from the wp-env "development" instance (WP :8888)
+# - mailpit-tests captures mail from the wp-env "tests" instance       (WP :8889)
+#
+# Both containers run the same image; we simply map different host ports so the
+# per-instance STAMPY_DEV_SMTP_PORT constant (1025 dev / 1026 tests) reaches the
+# right Mailpit. The dev mu-plugin sends to host.docker.internal:<port>.
+#
+# Modern Compose does not require a top-level "version" key.
+
+services:
+  mailpit-dev:
+    image: axllent/mailpit:latest
+    container_name: stampy-mailpit-dev
+    restart: unless-stopped
+    ports:
+      - "1025:1025" # SMTP
+      - "8025:8025" # Web UI / API
+    environment:
+      MP_SMTP_BIND_ADDR: "0.0.0.0:1025"
+      MP_UI_BIND_ADDR: "0.0.0.0:8025"
+
+  mailpit-tests:
+    image: axllent/mailpit:latest
+    container_name: stampy-mailpit-tests
+    restart: unless-stopped
+    ports:
+      - "1026:1025" # host 1026 -> container SMTP 1025
+      - "8026:8025" # host 8026 -> container Web UI / API 8025
+    environment:
+      MP_SMTP_BIND_ADDR: "0.0.0.0:1025"
+      MP_UI_BIND_ADDR: "0.0.0.0:8025"

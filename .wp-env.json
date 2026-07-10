@@ -1,0 +1,29 @@
+{
+	"core": "https://wordpress.org/wordpress-7.0.zip",
+	"phpVersion": "8.3",
+	"mappings": {
+		"wp-content/plugins/stampy": ".",
+		"wp-content/mu-plugins/stampy-dev-mailer.php": "./dev/mu-plugins/stampy-dev-mailer.php"
+	},
+	"config": {
+		"WP_DEBUG": true,
+		"WP_DEBUG_LOG": true,
+		"SCRIPT_DEBUG": true,
+		"STAMPY_DEV_SMTP_PORT": 1025
+	},
+	"env": {
+		"development": {
+			"config": {
+				"STAMPY_DEV_SMTP_PORT": 1025
+			}
+		},
+		"tests": {
+			"config": {
+				"STAMPY_DEV_SMTP_PORT": 1026
+			}
+		}
+	},
+	"lifecycleScripts": {
+		"afterStart": "bash ./dev/mailpit-up.sh"
+	}
+}
