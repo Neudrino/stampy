@@ -14,7 +14,24 @@
 declare( strict_types=1 );
 
 /*
- * 1. Composer autoloader (guarded).
+ * 1. Decide whether to boot the WordPress integration test framework.
+ *
+ * Integration mode is enabled when the STAMPY_TEST_INTEGRATION environment
+ * variable is truthy.
+ *
+ * We intentionally do NOT use WP_PHPUNIT__DIR as a trigger: wp-phpunit's
+ * Composer autoloader (__loaded.php) calls putenv('WP_PHPUNIT__DIR=...')
+ * unconditionally, and PHPUnit's bin proxy loads the autoloader before this
+ * bootstrap file runs — so WP_PHPUNIT__DIR is always set by the time we get
+ * here, even for unit-only runs.
+ *
+ * The unit suite needs nothing further from this file: individual unit tests
+ * manage their own Brain\Monkey setUp()/tearDown() lifecycle.
+ */
+$stampy_force_integration = (bool) getenv( 'STAMPY_TEST_INTEGRATION' );
+
+/*
+ * 2. Composer autoloader (guarded).
  *
  * Provides PSR-4 autoloading for both the plugin ("Stampy\") and the test
  * classes ("Stampy\Tests\"), plus dev dependencies such as Brain Monkey,
@@ -30,20 +47,7 @@ if ( ! is_readable( $stampy_autoload ) ) {
 }
 require_once $stampy_autoload;
 
-/*
- * 2. Decide whether to boot the WordPress integration test framework.
- *
- * Integration mode is enabled when either:
- *   - the WP_PHPUNIT__DIR environment variable is set (wp-phpunit is present), or
- *   - the STAMPY_TEST_INTEGRATION environment variable is truthy.
- *
- * The unit suite needs nothing further from this file: individual unit tests
- * manage their own Brain\Monkey setUp()/tearDown() lifecycle.
- */
-$stampy_wp_phpunit_dir = getenv( 'WP_PHPUNIT__DIR' );
-$stampy_force_integration = (bool) getenv( 'STAMPY_TEST_INTEGRATION' );
-
-if ( false === $stampy_wp_phpunit_dir && ! $stampy_force_integration ) {
+if ( ! $stampy_force_integration ) {
 	// Unit-only run: nothing more to load.
 	return;
 }
@@ -51,9 +55,10 @@ if ( false === $stampy_wp_phpunit_dir && ! $stampy_force_integration ) {
 /*
  * 3. Locate the wp-phpunit bootstrap.
  *
- * Prefer the path advertised via WP_PHPUNIT__DIR (set automatically by the
- * wp-phpunit/wp-phpunit Composer package), and fall back to the vendored copy.
+ * WP_PHPUNIT__DIR is set automatically by the wp-phpunit/wp-phpunit Composer
+ * package's autoloaded __loaded.php file. Fall back to a vendored path.
  */
+$stampy_wp_phpunit_dir = getenv( 'WP_PHPUNIT__DIR' );
 if ( false === $stampy_wp_phpunit_dir || '' === $stampy_wp_phpunit_dir ) {
 	$stampy_wp_phpunit_dir = dirname( __DIR__, 2 ) . '/vendor/wp-phpunit/wp-phpunit';
 }
@@ -75,6 +80,22 @@ if ( ! is_readable( $stampy_wp_tests_functions ) || ! is_readable( $stampy_wp_te
 
 // Give access to tests_add_filter() before the WP test suite loads.
 require_once $stampy_wp_tests_functions;
+
+/*
+ * The wp-phpunit bootstrap looks for wp-tests-config.php relative to its own
+ * location. When using the vendored copy, that file doesn't exist. The
+ * wp-env tests container provides one at /wordpress-phpunit/wp-tests-config.php
+ * (exposed via WP_TESTS_DIR). Point the bootstrap at it.
+ */
+if ( ! defined( 'WP_TESTS_CONFIG_FILE_PATH' ) ) {
+	$stampy_wp_tests_dir = getenv( 'WP_TESTS_DIR' );
+	if ( false !== $stampy_wp_tests_dir && '' !== $stampy_wp_tests_dir ) {
+		$stampy_config = rtrim( $stampy_wp_tests_dir, '/\\' ) . '/wp-tests-config.php';
+		if ( is_readable( $stampy_config ) ) {
+			define( 'WP_TESTS_CONFIG_FILE_PATH', $stampy_config );
+		}
+	}
+}
 
 /**
  * Register the Stampy plugin so it loads inside the WordPress test install.

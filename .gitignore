@@ -2,6 +2,9 @@
 /node_modules/
 /vendor/
 
+# wp-env project-local home (downloaded WP core, generated docker-compose, state)
+/.wp-env-home/
+
 # Build output (compiled assets are shipped, but not committed to git)
 /build/
 

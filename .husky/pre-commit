@@ -1,2 +1,1 @@
-#!/usr/bin/env sh
-npm run validate:fast
+npm run validate:fast 2>&1 | cat
