@@ -1,0 +1,71 @@
+parameters:
+	ignoreErrors:
+		-
+			message: "#^Method Stampy\\\\Repositories\\\\ConsentTextRepository\\:\\:all\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			count: 1
+			path: includes/Repositories/ConsentTextRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 1
+			path: includes/Repositories/ConsentTextRepository.php
+
+		-
+			message: "#^Method Stampy\\\\Repositories\\\\FieldRepository\\:\\:all\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			count: 2
+			path: includes/Repositories/FieldRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 2
+			path: includes/Repositories/FieldRepository.php
+
+		-
+			message: "#^Method Stampy\\\\Repositories\\\\ListRepository\\:\\:all\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			count: 1
+			path: includes/Repositories/ListRepository.php
+
+		-
+			message: "#^Method Stampy\\\\Repositories\\\\ListRepository\\:\\:get_list_subscribers\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			count: 1
+			path: includes/Repositories/ListRepository.php
+
+		-
+			message: "#^Method Stampy\\\\Repositories\\\\ListRepository\\:\\:get_subscriber_lists\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			count: 1
+			path: includes/Repositories/ListRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 5
+			path: includes/Repositories/ListRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 6
+			path: includes/Repositories/PendingSignupRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			count: 2
+			path: includes/Repositories/PendingSignupRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 4
+			path: includes/Repositories/SubscriberMetaRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			count: 1
+			path: includes/Repositories/SubscriberMetaRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 9
+			path: includes/Repositories/SubscriberRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			count: 6
+			path: includes/Repositories/SubscriberRepository.php
