@@ -31,6 +31,7 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **Integration tests (PHP):** `WP_UnitTestCase` via wp-phpunit. `tests/phpunit/Integration/` — namespace `Stampy\Tests\Integration`. Run on the `tests-cli` container (not `cli`).
 - **Unit tests (JS):** Jest via `wp-scripts`. `--testPathIgnorePatterns` excludes `tests/e2e/` (Playwright specs) and `.wp-env-home/` (WP core).
 - **E2E:** Playwright, baseURL `:8889` (tests instance). No `webServer` block — must `npm run env:start` first.
+- **Tests instance (:8889) has no theme after `env:clean:tests` or integration test runs** — E2E tests must use the REST API (`?rest_route=/`), not front-end HTML assertions. Pretty permalinks are also off; always use `?rest_route=/` instead of `/wp-json/`.
 - **Test dirs are PSR-4 cased:** `Unit/` and `Integration/` (capitalized) under `tests/phpunit/`.
 
 ## Code style
