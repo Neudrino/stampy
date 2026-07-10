@@ -21,8 +21,8 @@ jobs:
     # PHP static checks (composer lint / analyse) run in the unit-php job
     # where PHP is available directly on the runner.
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -35,8 +35,8 @@ jobs:
     name: Unit tests (JS)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -52,7 +52,7 @@ jobs:
         # '8.4' stands in for "latest" supported PHP.
         php: [ '8.3', '8.4' ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -73,9 +73,13 @@ jobs:
       matrix:
         wp: [ '7.0', 'latest' ]
     # ubuntu-latest ships Docker preinstalled, which wp-env requires.
+    # WP_ENV_HOME must match the value baked into the npm scripts so that
+    # bare `npx wp-env run` commands find the running containers.
+    env:
+      WP_ENV_HOME: ./.wp-env-home
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -86,10 +90,15 @@ jobs:
         env:
           WP_ENV_CORE: ${{ matrix.wp == 'latest' && 'WordPress/WordPress' || format('https://wordpress.org/wordpress-{0}.zip', matrix.wp) }}
         run: npm run env:start
+      # Composer deps must be installed inside the container — vendor/ is
+      # gitignored and wp-env mounts the plugin directory read-only from the
+      # host, so the host has no vendor/ in CI.
+      - name: Composer install (in container)
+        run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy composer install --no-interaction --prefer-dist
       - run: npm run test:integration:php
       - name: Upload debug.log on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: debug-log-wp-${{ matrix.wp }}
           path: '**/wp-content/debug.log'
@@ -99,8 +108,8 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -108,9 +117,12 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - run: npm run env:start
       - run: npm run test:e2e
+        env:
+          # Browsers already installed above; skip wp-scripts' redundant install.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
       - name: Upload Playwright report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: |
@@ -122,8 +134,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
@@ -140,19 +152,53 @@ jobs:
     name: Plugin Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      # Official WordPress Plugin Check action. Inputs may need tuning once the
-      # build output layout is finalized; build-dir '.' checks the repo root.
+      - uses: actions/checkout@v7
+      # vendor/ is gitignored, so the Plugin Check action's wp-env has no
+      # Composer autoloader. Install production deps on the runner first;
+      # wp-env mounts the plugin directory from the host, so vendor/ is
+      # visible inside the container.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          tools: composer
+      - run: composer install --no-dev --optimize-autoloader
+      # Official WordPress Plugin Check action. The repo root contains dev-only
+      # files (tests, config, CI) that are not shipped in the production build.
+      # We exclude them so Plugin Check only scrutinizes production code.
       - uses: wordpress/plugin-check-action@v1
         with:
           build-dir: '.'
+          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs'
+          exclude-files: |
+            phpunit.xml.dist
+            phpstan.neon.dist
+            phpcs.xml.dist
+            phpstan-baseline.neon
+            playwright.config.ts
+            .gitignore
+            .distignore
+            .nvmrc
+            .wp-env.json
+            .gitkeep
+            composer.json
+            composer.lock
+            package.json
+            package-lock.json
+            tsconfig.json
+            PLAN.md
+            PROGRESS.md
+            AGENTS.md
+            README.md
+            SECURITY.md
+            LICENSE
+          ignore-warnings: 'true'
 
   audit:
     name: Dependency audit (non-blocking)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
