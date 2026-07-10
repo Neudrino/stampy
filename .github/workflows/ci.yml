@@ -21,7 +21,7 @@ jobs:
     # PHP static checks (composer lint / analyse) run in the unit-php job
     # where PHP is available directly on the runner.
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -35,7 +35,7 @@ jobs:
     name: Unit tests (JS)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -52,7 +52,7 @@ jobs:
         # '8.4' stands in for "latest" supported PHP.
         php: [ '8.3', '8.4' ]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -78,7 +78,7 @@ jobs:
     env:
       WP_ENV_HOME: ./.wp-env-home
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -108,7 +108,7 @@ jobs:
     name: E2E (Playwright)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -134,7 +134,7 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
@@ -152,7 +152,7 @@ jobs:
     name: Plugin Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       # vendor/ is gitignored, so the Plugin Check action's wp-env has no
       # Composer autoloader. Install production deps on the runner first;
       # wp-env mounts the plugin directory from the host, so vendor/ is
@@ -197,7 +197,7 @@ jobs:
     name: Dependency audit (non-blocking)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v4
         with:
           node-version-file: '.nvmrc'
