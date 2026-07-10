@@ -2,6 +2,10 @@
 
 WordPress mailing-list plugin. PHP backend (`includes/`, PSR-4 `Stampy\`), TS/JS frontend (`src/`), built with `@wordpress/scripts`. Version frozen at `0.0.1` — never bump unless explicitly told.
 
+## CRITICAL — Never commit to git
+
+**The agent must NEVER run `git add`, `git commit`, `git push`, or any other git mutation command.** Only the user may commit or push changes. The agent may run read-only git commands (`git status`, `git diff`, `git log`, etc.) but must never stage, commit, or push. Violating this rule is a critical failure.
+
 ## Essential commands
 
 ```bash
@@ -20,8 +24,6 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **`WP_ENV_HOME=./.wp-env-home` is baked into every `env:*` npm script.** This keeps wp-env state project-local. The `.wp-env-home/` dir is gitignored — don't remove the env var from scripts. **In CI workflows**, any bare `npx wp-env run` command (outside an npm script) must also set `WP_ENV_HOME` — set it as a job-level `env:` or the command can't find the running containers.
 - **Composer `phpunit` must be `vendor/bin/phpunit`.** A global phpunit v10 exists in the wp-env container and shadows the project's v9 if you use bare `phpunit`.
 - **PHPUnit integration mode is keyed on `STAMPY_TEST_INTEGRATION=1`**, not on `WP_PHPUNIT__DIR` (which wp-phpunit's autoloader always sets). The composer `test:integration` script sets it automatically.
-- **After adding/changing Composer deps**, run `composer install` inside the container:
-  `npx wp-env run cli --env-cwd=wp-content/plugins/stampy composer install`
 - **After adding PHP classes**, run `composer dump-autoload` in the container to regenerate the PSR-4 autoloader.
 - **PHPCS `InterpolatedNotPrepared`** — table names in `$wpdb->prepare()` queries trigger this sniff. Use `phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared` ... `phpcs:enable` blocks around the query (NOT `// phpcs:ignore` on a separate line — that only covers the current line).
 - **PHPCS `DisallowShortTernary`** — `$row ?: null` is forbidden. Use `null !== $row ? $row : null`.
@@ -47,6 +49,7 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 ## Architecture
 
 - `stampy.php` — entry point, defines `Stampy\VERSION` and `Stampy\PLUGIN_FILE`, calls `bootstrap()`.
+- `uninstall.php` — runs on plugin deletion (not deactivation). The plugin main file is NOT loaded, so `vendor/autoload.php` must be required manually. All variables must use `stampy_` prefix (global namespace → PHPCS `PrefixAllGlobals`). By default, all data (tables, options, cron) is removed on uninstall; `stampy_delete_data_on_uninstall` option defaults to `'1'` (on).
 - `includes/` — PSR-4 classes (`Stampy\` namespace).
 - `src/` — TypeScript/JS (block editor, frontend).
 - `dev/` — dev-only Mailpit docker-compose, mu-plugin mailer, startup script.
@@ -76,3 +79,11 @@ GitHub Actions (`.github/workflows/ci.yml`) runs: lint (JS/TS/CSS), unit-js, uni
 - **Bare `npx wp-env run` in CI needs `WP_ENV_HOME`.** The npm scripts set `WP_ENV_HOME=./.wp-env-home` inline, but any `npx wp-env run` command outside an npm script must set it too (job-level `env:`). Without it, wp-env can't find the containers and fails in ~1 second with "Environment not initialized".
 - **Plugin Check action needs `vendor/` on the host.** The `wordpress/plugin-check-action@v1` mounts the plugin directory from the host into its own wp-env. Since `vendor/` is gitignored, the autoloader is missing and the plugin fatals on activation (`Class "Stampy\Lifecycle" not found`). Fix: run `shivammathur/setup-php@v2` + `composer install --no-dev --optimize-autoloader` before the plugin-check action.
 - **Plugin Check excludes dev files.** The repo root contains dev-only files (tests, config, CI) that are not shipped in the production build. Use `exclude-directories`, `exclude-files`, and `ignore-warnings: 'true'` inputs on the plugin-check-action to exclude them. A more robust long-term fix would be to build the plugin first and run Plugin Check on the built artifact.
+
+## Dependency management
+
+- **`--legacy-peer-deps` required for npm install.** `@wordpress/scripts` wants `@wordpress/env@^10` as a peerOptional, but we use `@wordpress/env@11` (v11 is needed for Node 24 compatibility). This is a known false conflict. Always use `npm install --legacy-peer-deps`.
+- **zod override in `package.json`.** `@wordpress/scripts@32` ships `eslint-plugin-react-hooks@7` which needs `zod@4`, but transitive deps dedupe to `zod@3.23.8` → ESLint 10 crashes on `zod/v4/core` (subpath not exported). The `"overrides": { "zod": "^4.4.3" }` entry forces zod 4 everywhere. Do not remove it.
+- **TypeScript 7 is incompatible with `@typescript-eslint`.** `@typescript-eslint@8.63.0` (bundled in `@wordpress/scripts@32`) has peer dep `typescript: >=4.8.4 <6.1.0`. TS 7 crashes with `Cannot read properties of undefined (reading 'Cjs')`. TS 6.0.3 is the maximum working version. Do not bump TypeScript beyond `^6.0.3` until `@typescript-eslint` publishes a version supporting TS 7.
+- **Never run `npm audit fix --force`.** It corrupts `package.json` by downgrading packages to resolve transitive vulnerabilities (e.g. downgraded `@wordpress/scripts` from `^32` to `^19.2.4`). If `package.json` gets corrupted, recover with `rm -rf node_modules package-lock.json && npm cache clean --force && npm install --legacy-peer-deps`.
+- **After changing Composer deps**, run `composer install` or `composer update <package>` inside the container: `WP_ENV_HOME=./.wp-env-home npx wp-env run cli --env-cwd=wp-content/plugins/stampy composer update <package>`.

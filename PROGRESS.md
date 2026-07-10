@@ -340,3 +340,67 @@ Status: **COMPLETE** ✓
      `SECURITY.md`, and `LICENSE` to `exclude-files`.
 - **All fixes verified locally** — 58 tests pass (3 JS unit, 3 PHP unit, 49
   PHP integration, 3 E2E). `validate:fast` ✓, `validate:docker` ✓.
+
+### Dependency upgrades (Dependabot PRs #1–#9)
+- All 9 open Dependabot PRs were implemented locally, one by one, with full
+  test runs after each upgrade.
+- **GitHub Actions (PRs #1, #2, #3, #5):**
+  - `github/codeql-action`: v3 → v4 (`codeql.yml`)
+  - `actions/upload-artifact`: v4 → v7 (`ci.yml`, 2 occurrences)
+  - `actions/setup-node`: v4 → v6 (`ci.yml`, all occurrences)
+  - `actions/checkout`: v4 → v7 (`ci.yml` + `codeql.yml`)
+- **Composer (PR #4):** `wp-phpunit/wp-phpunit`: ^6.5 → ^7.0 (6.9.4 → 7.0.1).
+  Required changing the constraint in `composer.json` and running `composer
+  update wp-phpunit/wp-phpunit` in the container.
+- **npm packages (PRs #6, #7, #8, #9):**
+  - `@types/wordpress__block-editor`: ^11 → ^15.0.6 (11.5.17 → 15.0.6)
+  - `npm-run-all2`: ^7 → ^9.0.2 (7.0.2 → 9.0.2)
+  - `@wordpress/scripts`: ^30 → ^32.6.0 (30.27.0 → 32.6.0)
+  - `typescript`: ^5 → ^6.0.3 (5.9.3 → 6.0.3). PR #7 proposed v7.0.2 but
+    `@typescript-eslint@8.63.0` (bundled in `@wordpress/scripts@32`) has peer
+    dep `typescript: >=4.8.4 <6.1.0` — TS 7 crashes with `Cannot read
+    properties of undefined (reading 'Cjs')`. TS 6.0.3 is within the peer dep
+    range and works. Left as `^6.0.3` (not `^7`).
+- **All devDependencies pinned to latest versions** from npmjs.com:
+  `@playwright/test` ^1.61.1, `@types/jest` ^30.0.0,
+  `@wordpress/e2e-test-utils-playwright` ^1.50.0, `@wordpress/env` ^11.10.0,
+  `husky` ^9.1.7.
+- **zod override added to `package.json`:** `@wordpress/scripts@32` ships
+  `eslint-plugin-react-hooks@7` which needs `zod@4`, but transitive deps were
+  deduping to `zod@3.23.8` → ESLint 10 crashes on `zod/v4/core` (subpath not
+  exported). Added `"overrides": { "zod": "^4.4.3" }` to force zod 4
+  everywhere.
+- **npm `audit fix --force` corrupted `package.json`** — it downgraded
+  `@wordpress/scripts` to `^19.2.4` and `@types/wordpress__block-editor` to
+  `^11.5.13` to resolve a transitive `ws` vulnerability. Recovery: `rm -rf
+  node_modules package-lock.json && npm cache clean --force && npm install
+  --legacy-peer-deps`.
+- **`--legacy-peer-deps` required** — `@wordpress/scripts@30+` wants
+  `@wordpress/env@^10` as a peerOptional, but we use `@wordpress/env@11`.
+  This is a known false conflict (wp-env v11 works fine with wp-scripts v32).
+- **All 58 tests pass** after all upgrades: lint:js ✓, lint:css ✓,
+  type-check ✓, test:unit:js ✓ (3 tests), lint:php ✓, analyse:php ✓,
+  test:unit:php ✓ (3 tests), test:integration:php ✓ (49 tests),
+  test:e2e ✓ (3 tests), build ✓.
+- **CI fully green on commit `6c44291`** — all 12 check runs passed
+  (Lint, Unit JS/PHP 8.3+8.4, Integration WP 7.0+latest, E2E, Build,
+  Plugin Check, Dependency audit, CodeQL).
+
+### Post-Phase 2 cleanup
+- **Dependabot PR #7 closed** (TypeScript 6→7). Left a comment explaining
+  the `@typescript-eslint` incompatibility. All other Dependabot PRs were
+  already applied directly to `main` (not merged via PR).
+- **`uninstall.php` updated** from Phase 0 inert stub to Phase 2 functional
+  implementation:
+  - Requires `vendor/autoload.php` manually (the plugin main file is NOT
+    loaded during uninstall, so the Composer autoloader isn't available
+    otherwise).
+  - Calls `Schema::uninstall()` to drop all 9 custom tables.
+  - Deletes plugin options (`stampy_db_version`,
+    `stampy_delete_data_on_uninstall`).
+  - Clears scheduled events (`stampy_daily_purge_pending_signups`).
+  - All gated behind `stampy_delete_data_on_uninstall` option (defaults
+    to `'1'` = on — all data removed by default). The admin settings UI
+    to toggle this ships in Phase 10.
+  - PHPCS: all variables in `uninstall.php` must use the `stampy_` prefix
+    (global namespace → `WordPress.NamingConventions.PrefixAllGlobals`).
