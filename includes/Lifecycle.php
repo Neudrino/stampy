@@ -12,6 +12,8 @@ declare( strict_types=1 );
 
 namespace Stampy;
 
+use Stampy\Repositories\PendingSignupRepository;
+
 /**
  * Handles WordPress plugin lifecycle hooks.
  */
@@ -28,6 +30,7 @@ class Lifecycle {
 		register_activation_hook( PLUGIN_FILE, array( self::class, 'on_activate' ) );
 		register_deactivation_hook( PLUGIN_FILE, array( self::class, 'on_deactivate' ) );
 		add_action( 'plugins_loaded', array( self::class, 'on_plugins_loaded' ) );
+		add_action( 'stampy_daily_purge_pending_signups', array( self::class, 'purge_expired_signups' ) );
 	}
 
 	/**
@@ -35,6 +38,7 @@ class Lifecycle {
 	 *
 	 * - Runs the migration runner (creates/upgrades all tables).
 	 * - Seeds default data (fields, consent text).
+	 * - Generates the per-site HMAC secret if absent.
 	 * - Registers rewrite rules and flushes them once.
 	 * - Schedules the daily pending-signups purge.
 	 *
@@ -45,8 +49,11 @@ class Lifecycle {
 	public static function on_activate(): void {
 		Installer::install();
 
-		// Rewrite rules will be registered in a later phase; flush now so
-		// future virtual endpoints resolve without a manual flush.
+		// Ensure the HMAC secret exists (idempotent).
+		Security::get_secret();
+
+		// Rewrite rules will be registered in init; flush now so
+		// the virtual endpoints resolve without a manual flush.
 		flush_rewrite_rules();
 
 		// Schedule the daily pending-signups purge.
@@ -90,5 +97,15 @@ class Lifecycle {
 		if ( $stored < $code ) {
 			Installer::install();
 		}
+	}
+
+	/**
+	 * Purge expired pending signups (daily cron callback).
+	 *
+	 * @return void
+	 */
+	public static function purge_expired_signups(): void {
+		$repo = new PendingSignupRepository();
+		$repo->purge_expired();
 	}
 }

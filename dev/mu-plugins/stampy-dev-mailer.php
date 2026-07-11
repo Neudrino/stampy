@@ -39,6 +39,8 @@ add_filter(
 	PHP_INT_MAX
 );
 
+add_filter( 'stampy_rate_limit_enabled', '__return_false' );
+
 add_action(
 	'phpmailer_init',
 	/**

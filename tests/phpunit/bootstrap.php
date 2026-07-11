@@ -107,5 +107,32 @@ function stampy_manually_load_plugin(): void {
 }
 tests_add_filter( 'muplugins_loaded', 'stampy_manually_load_plugin' );
 
+/**
+ * Capture wp_mail() calls for integration test assertions.
+ *
+ * The WordPress test framework uses a mock PHPMailer that doesn't send
+ * real mail. This filter captures the arguments for assertion in tests.
+ *
+ * @param array<string, mixed> $args wp_mail arguments.
+ * @return array<string, mixed> Unchanged arguments.
+ */
+function stampy_test_capture_mail( $args ) {
+	if ( ! isset( $GLOBALS['phpmailer_mock_sent'] ) ) {
+		$GLOBALS['phpmailer_mock_sent'] = array();
+	}
+	$GLOBALS['phpmailer_mock_sent'][] = array(
+		'to'      => $args['to'] ?? '',
+		'subject' => $args['subject'] ?? '',
+		'body'    => $args['message'] ?? '',
+		'headers' => $args['headers'] ?? array(),
+	);
+	return $args;
+}
+tests_add_filter( 'wp_mail', 'stampy_test_capture_mail' );
+
+// Disable rate-limit guard during integration tests (all requests come
+// from 127.0.0.1, which would hit the 5/hour limit after a few tests).
+tests_add_filter( 'stampy_rate_limit_enabled', '__return_false' );
+
 // Start up the WordPress testing environment.
 require $stampy_wp_tests_bootstrap;

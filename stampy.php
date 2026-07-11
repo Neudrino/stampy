@@ -45,10 +45,13 @@ if ( is_readable( $stampy_autoload ) ) {
 /**
  * Bootstraps the plugin.
  *
- * Registers lifecycle hooks and WP-CLI commands.
+ * Registers lifecycle hooks, rewrite rules, REST controllers, and
+ * WP-CLI commands.
  */
 function bootstrap(): void {
 	Lifecycle::register();
+	Rewrites::register();
+	Rest\RestApi::register();
 
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		\WP_CLI::add_command( 'stampy', Cli::class );
