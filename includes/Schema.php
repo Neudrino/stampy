@@ -12,6 +12,11 @@ declare( strict_types=1 );
 
 namespace Stampy;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use wpdb;
 
 /**

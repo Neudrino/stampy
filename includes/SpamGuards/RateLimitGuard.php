@@ -12,6 +12,11 @@ declare( strict_types=1 );
 
 namespace Stampy\SpamGuards;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Rejects submissions exceeding the per-IP rate limit.
  */
