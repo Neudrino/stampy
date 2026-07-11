@@ -29,6 +29,9 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **PHPCS `DisallowShortTernary`** — `$row ?: null` is forbidden. Use `null !== $row ? $row : null`.
 - **PHPStan `wpdb::prepare()` expects `literal-string`** — any interpolated table name makes it `non-falsy-string`. These are false-positives; the baseline file suppresses them. After adding new repository methods with table interpolation, run `vendor/bin/phpstan analyse --memory-limit=512M --generate-baseline=phpstan-baseline.neon` to regenerate the baseline.
 - **Husky pre-commit hook pipes through `cat`** so `process.stdout.isTTY` is false, which makes wp-env auto-add `-T` to docker-compose. Without this, git hooks run with a pseudo-TTY that confuses wp-env's TTY detection → "input device is not a TTY".
+- **PSR-4 subdirectory namespaces**: Classes in `includes/Email/`, `includes/SpamGuards/`, `includes/Validators/`, `includes/Rest/` must use the corresponding sub-namespace (`Stampy\Email`, `Stampy\SpamGuards`, etc.) or Composer's autoloader silently skips them. After adding new subdirectories, run `composer dump-autoload` and watch for "does not comply with psr-4" warnings.
+- **`wp_mail` capture in integration tests**: The test bootstrap has a `wp_mail` filter (`stampy_test_capture_mail`) that captures all sent emails into `$GLOBALS['phpmailer_mock_sent']`. Each entry is `['to' => ..., 'subject' => ..., 'body' => ..., 'headers' => ...]`. Reset with `unset( $GLOBALS['phpmailer_mock_sent'] )` in `setUp()`/`tearDown()`.
+- **PHPCS multi-line `@param` with `{`**: WordPress-style structured docblocks (`@param array<mixed> $request { ... }`) trigger `Squiz.Commenting.FunctionComment.ParamCommentFullStop`. Use a plain `@param` description instead.
 
 ## Testing
 
@@ -51,6 +54,13 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - `stampy.php` — entry point, defines `Stampy\VERSION` and `Stampy\PLUGIN_FILE`, calls `bootstrap()`.
 - `uninstall.php` — runs on plugin deletion (not deactivation). The plugin main file is NOT loaded, so `vendor/autoload.php` must be required manually. All variables must use `stampy_` prefix (global namespace → PHPCS `PrefixAllGlobals`). By default, all data (tables, options, cron) is removed on uninstall; `stampy_delete_data_on_uninstall` option defaults to `'1'` (on).
 - `includes/` — PSR-4 classes (`Stampy\` namespace).
+  - `SpamGuards/` — spam-guard chain (interface, honeypot, rate-limit, chain orchestrator).
+  - `Validators/` — field-type validator registry (interface, email/text/acceptance validators, singleton registry).
+  - `Rest/` — REST API controllers (signup, confirm, unsubscribe, preferences).
+  - `Email/` — confirmation email service.
+  - `Security.php` — token generation, SHA-256 hashing, HMAC signing/verification.
+  - `SignupService.php` — core opt-in business logic (signup pipeline + confirm pipeline).
+  - `Rewrites.php` — virtual endpoint rewrite rules + HTML page rendering.
 - `src/` — TypeScript/JS (block editor, frontend).
 - `dev/` — dev-only Mailpit docker-compose, mu-plugin mailer, startup script.
 - `.wp-env.json` — WP 7.0, PHP 8.3, dual instance (dev `:8888`, tests `:8889`), per-instance Mailpit (`:8025`/`:8026`).

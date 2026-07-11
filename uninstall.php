@@ -42,6 +42,7 @@ Schema::uninstall();
 $stampy_options = array(
 	'stampy_db_version',
 	'stampy_delete_data_on_uninstall',
+	'stampy_hmac_secret',
 );
 
 foreach ( $stampy_options as $stampy_option ) {
