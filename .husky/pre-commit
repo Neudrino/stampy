@@ -1,1 +1,9 @@
+set -o pipefail
+
+# Ensure wp-env is running so PHP checks can execute.
+if ! WP_ENV_HOME=./.wp-env-home npx wp-env run cli --env-cwd=wp-content/plugins/stampy true 2>/dev/null; then
+	echo "husky - starting wp-env (cli container not running)…"
+	WP_ENV_HOME=./.wp-env-home npx wp-env start 2>&1 | cat
+fi
+
 npm run validate:fast 2>&1 | cat

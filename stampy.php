@@ -52,6 +52,7 @@ function bootstrap(): void {
 	Lifecycle::register();
 	Rewrites::register();
 	Rest\RestApi::register();
+	add_action( 'init', array( SignupBlock::class, 'register' ) );
 
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		\WP_CLI::add_command( 'stampy', Cli::class );

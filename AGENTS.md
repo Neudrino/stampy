@@ -27,8 +27,8 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **After adding PHP classes**, run `composer dump-autoload` in the container to regenerate the PSR-4 autoloader.
 - **PHPCS `InterpolatedNotPrepared`** — table names in `$wpdb->prepare()` queries trigger this sniff. Use `phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared` ... `phpcs:enable` blocks around the query (NOT `// phpcs:ignore` on a separate line — that only covers the current line).
 - **PHPCS `DisallowShortTernary`** — `$row ?: null` is forbidden. Use `null !== $row ? $row : null`.
-- **PHPStan `wpdb::prepare()` expects `literal-string`** — any interpolated table name makes it `non-falsy-string`. These are false-positives; the baseline file suppresses them. After adding new repository methods with table interpolation, run `vendor/bin/phpstan analyse --memory-limit=512M --generate-baseline=phpstan-baseline.neon` to regenerate the baseline.
-- **Husky pre-commit hook pipes through `cat`** so `process.stdout.isTTY` is false, which makes wp-env auto-add `-T` to docker-compose. Without this, git hooks run with a pseudo-TTY that confuses wp-env's TTY detection → "input device is not a TTY".
+- **PHPStan `wpdb::prepare()` expects `literal-string`** — any interpolated table name makes it `non-falsy-string`. These are false-positives; the baseline file suppresses them. After adding new repository methods with table interpolation, run `vendor/bin/phpstan analyse --memory-limit=1G --generate-baseline=phpstan-baseline.neon` to regenerate the baseline.
+- **Husky pre-commit hook** uses `set -o pipefail` and pipes through `cat` (so `process.stdout.isTTY` is false, which makes wp-env auto-add `-T` to docker-compose). The hook auto-starts wp-env if the `cli` container is not running, then runs `npm run validate:fast`. A failing check (JS or PHP) blocks the commit.
 - **PSR-4 subdirectory namespaces**: Classes in `includes/Email/`, `includes/SpamGuards/`, `includes/Validators/`, `includes/Rest/` must use the corresponding sub-namespace (`Stampy\Email`, `Stampy\SpamGuards`, etc.) or Composer's autoloader silently skips them. After adding new subdirectories, run `composer dump-autoload` and watch for "does not comply with psr-4" warnings.
 - **`wp_mail` capture in integration tests**: The test bootstrap has a `wp_mail` filter (`stampy_test_capture_mail`) that captures all sent emails into `$GLOBALS['phpmailer_mock_sent']`. Each entry is `['to' => ..., 'subject' => ..., 'body' => ..., 'headers' => ...]`. Reset with `unset( $GLOBALS['phpmailer_mock_sent'] )` in `setUp()`/`tearDown()`.
 - **PHPCS multi-line `@param` with `{`**: WordPress-style structured docblocks (`@param array<mixed> $request { ... }`) trigger `Squiz.Commenting.FunctionComment.ParamCommentFullStop`. Use a plain `@param` description instead.
@@ -37,16 +37,18 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 
 - **Unit tests (PHP):** WP-free, Brain Monkey. `tests/phpunit/Unit/` — namespace `Stampy\Tests\Unit`.
 - **Integration tests (PHP):** `WP_UnitTestCase` via wp-phpunit. `tests/phpunit/Integration/` — namespace `Stampy\Tests\Integration`. Run on the `tests-cli` container (not `cli`).
-- **Unit tests (JS):** Jest via `wp-scripts`. `--testPathIgnorePatterns` excludes `tests/e2e/` (Playwright specs) and `.wp-env-home/` (WP core).
-- **E2E:** Playwright, baseURL `:8889` (tests instance). No `webServer` block — must `npm run env:start` first.
+- **Unit tests (JS):** Jest via `wp-scripts`. Custom `jest.config.js` extends `@wordpress/jest-preset-default`, adds `moduleNameMapper` for WordPress package mocks (`tests/jest/mocks/`), uses `@wordpress/scripts/config/babel-transform` for TS/JSX. Setup file `tests/jest/setup.js` adds `TextEncoder`/`TextDecoder` (needed by `react-dom/server` in jsdom) and the `window.stampy` global.
+- **WordPress packages not installed on host**: `@wordpress/blocks`, `@wordpress/components`, `@wordpress/i18n`, `@wordpress/api-fetch`, `@wordpress/block-editor` are WordPress externals (provided at runtime via `DependencyExtractionWebpackPlugin`). They're listed as `peerDependencies` in `package.json` but not actually installed. Jest mocks them via `moduleNameMapper` → `tests/jest/mocks/`. TypeScript type declarations for `@wordpress/api-fetch` are in `types/api-fetch.d.ts`.
+- **E2E:** Playwright, baseURL `:8889` (tests instance). No `webServer` block — must `npm run env:start` first. `globalSetup` (`tests/e2e/global-setup.ts`) activates the Stampy plugin on the tests instance and seeds a list via `wp stampy seed`.
+- **Tests instance (:8889) has Stampy inactive by default** — the Playwright `globalSetup` must run `wp plugin activate stampy` before tests.
 - **Tests instance (:8889) has no theme after `env:clean:tests` or integration test runs** — E2E tests must use the REST API (`?rest_route=/`), not front-end HTML assertions. Pretty permalinks are also off; always use `?rest_route=/` instead of `/wp-json/`.
 - **Test dirs are PSR-4 cased:** `Unit/` and `Integration/` (capitalized) under `tests/phpunit/`.
 
 ## Code style
 
 - PHPCS: `WordPress-Extra` + `WordPress-Docs`, text domain `stampy`, prefixes `stampy`/`Stampy`. `includes/*` excluded from file-name sniff (PSR-4).
-- PHPStan: level 8, scans `includes/`, `stampy.php`, `uninstall.php`. Uses `phpstan-baseline.neon` for `wpdb::prepare()` literal-string false-positives. `stubs/` dir has WP_CLI stub for PHPStan, excluded from PHPCS. `--memory-limit=512M` in the `composer analyse` script (default 128M is insufficient).
-- TypeScript: strict mode, `types: ["jest"]`.
+- PHPStan: level 8, scans `includes/`, `stampy.php`, `uninstall.php`. Uses `phpstan-baseline.neon` for `wpdb::prepare()` literal-string false-positives. `stubs/` dir has WP_CLI stub for PHPStan, excluded from PHPCS. `--memory-limit=1G` in the `composer analyse` script (512M was insufficient after adding `SignupBlock.php`).
+- TypeScript: strict mode, `types: ["jest", "node"]`.
 - **Do not add comments** unless explicitly asked.
 
 ## Architecture
@@ -61,7 +63,9 @@ npm run validate           # full: env:start → validate:fast → validate:dock
   - `Security.php` — token generation, SHA-256 hashing, HMAC signing/verification.
   - `SignupService.php` — core opt-in business logic (signup pipeline + confirm pipeline).
   - `Rewrites.php` — virtual endpoint rewrite rules + HTML page rendering.
+  - `SignupBlock.php` — server-side registration and rendering for the Stampy Signup block.
 - `src/` — TypeScript/JS (block editor, frontend).
+  - `blocks/signup/` — Stampy Signup block (block.json, edit.tsx, save.ts, view.ts, edit.test.tsx).
 - `dev/` — dev-only Mailpit docker-compose, mu-plugin mailer, startup script.
 - `.wp-env.json` — WP 7.0, PHP 8.3, dual instance (dev `:8888`, tests `:8889`), per-instance Mailpit (`:8025`/`:8026`).
 - `PLAN.md` — full phased implementation plan. `PROGRESS.md` — phase tracking and environment state.
@@ -88,6 +92,8 @@ GitHub Actions (`.github/workflows/ci.yml`) runs: lint (JS/TS/CSS), unit-js, uni
 
 - **Bare `npx wp-env run` in CI needs `WP_ENV_HOME`.** The npm scripts set `WP_ENV_HOME=./.wp-env-home` inline, but any `npx wp-env run` command outside an npm script must set it too (job-level `env:`). Without it, wp-env can't find the containers and fails in ~1 second with "Environment not initialized".
 - **Plugin Check action needs `vendor/` on the host.** The `wordpress/plugin-check-action@v1` mounts the plugin directory from the host into its own wp-env. Since `vendor/` is gitignored, the autoloader is missing and the plugin fatals on activation (`Class "Stampy\Lifecycle" not found`). Fix: run `shivammathur/setup-php@v2` + `composer install --no-dev --optimize-autoloader` before the plugin-check action.
+- **E2E job needs `composer install` in the container.** The `globalSetup` activates the plugin and creates a list via `wp eval`. Without `vendor/`, activation fatals silently and `STAMPY_E2E_LIST_ID` is never set → tests fail with "STAMPY_E2E_LIST_ID not set". Fix: add a `npx wp-env run tests-cli --env-cwd=... composer install` step before `npm run test:e2e` (with `WP_ENV_HOME` env set).
+- **E2E `globalSetup` errors must be loud.** If plugin activation or list creation fails, the setup should throw, not silently continue. Silent failures produce confusing test failures (e.g. `result.success` is `undefined` because the REST route doesn't exist).
 - **Plugin Check excludes dev files.** The repo root contains dev-only files (tests, config, CI) that are not shipped in the production build. Use `exclude-directories`, `exclude-files`, and `ignore-warnings: 'true'` inputs on the plugin-check-action to exclude them. A more robust long-term fix would be to build the plugin first and run Plugin Check on the built artifact.
 
 ## Dependency management
