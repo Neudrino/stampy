@@ -533,3 +533,108 @@ Status: **COMPLETE** ✓
   `null !== $request->get_param( 'form_id' ) ? ... : null` instead.
   - PHPCS: all variables in `uninstall.php` must use the `stampy_` prefix
     (global namespace → `WordPress.NamingConventions.PrefixAllGlobals`).
+
+## Phase 4 — Signup Block in TSX
+
+**Status: COMPLETE — all tests green.**
+
+### Requirements fulfilled
+- [x] Signup block in TSX (email + optional first/last-name inputs)
+- [x] Consent checkbox (required, text from consent-text registry)
+- [x] List selection requiring ≥1 list — editor notice + front-end no-op if none
+- [x] Accessibility (labels, aria-required, aria-invalid, aria-describedby, honeypot)
+- [x] Attributes deprecation-ready for the §10 R2 form builder
+- [x] Jest tests for block edit component
+- [x] First E2E signup→confirm journey
+
+### Functional steps taken
+- **`types/globals.d.ts`** — expanded with `StampyList` and `StampyGlobal`
+  interfaces declared as globals, covering REST URL, nonce, lists, consent text.
+- **`types/api-fetch.d.ts`** — ambient type declaration for
+  `@wordpress/api-fetch` (not installed as npm dep; provided as WordPress
+  external at runtime).
+- **`src/blocks/signup/block.json`** — block metadata: `stampy/signup`,
+  attributes `list_ids` (number[]), `show_first_name` (bool), `show_last_name`
+  (bool). `editorScript` and `viewScript` use `file:` prefix (wp-scripts
+  auto-discovers and rewrites to `.js` on build).
+- **`src/blocks/signup/index.ts`** — registers the block via
+  `registerBlockType( metadata, { edit, save } )`.
+- **`src/blocks/signup/edit.tsx`** — editor UI with `InspectorControls`:
+  list checkboxes (from `window.stampy.lists`), toggle controls for name
+  fields, warning `Notice` when no list selected. Form preview with email,
+  optional name inputs, consent checkbox, honeypot.
+- **`src/blocks/signup/save.ts`** — returns `null` (server-rendered block).
+- **`src/blocks/signup/view.ts`** — front-end progressive enhancement:
+  intercepts form submit, POSTs via `apiFetch` to `/stampy/v1/signup`,
+  handles success (replaces form with message) and errors (inline field
+  errors with `aria-invalid`, `aria-describedby`).
+- **`includes/SignupBlock.php`** — server-side block registration via
+  `register_block_type_from_metadata()` with `render_callback`. Renders
+  the form HTML with proper labels, required attributes, honeypot, and
+  `data-list-ids` attribute for the view script. Localizes REST URL,
+  nonce, lists, and consent text via `wp_add_inline_script`.
+- **`stampy.php`** — `bootstrap()` now calls `SignupBlock::register()`.
+- **`jest.config.js`** — extends `@wordpress/jest-preset-default`, adds
+  `moduleNameMapper` for WordPress package mocks, uses
+  `@wordpress/scripts/config/babel-transform` for TypeScript/JSX support.
+- **`tests/jest/mocks/`** — mock modules for `@wordpress/block-editor`,
+  `@wordpress/components`, `@wordpress/i18n`, `@wordpress/api-fetch` (not
+  installed as npm deps; provided as WordPress externals).
+- **`tests/jest/setup.js`** — sets up `TextEncoder`/`TextDecoder` (needed
+  by `react-dom/server` in jsdom) and the `window.stampy` global.
+- **`tests/e2e/global-setup.ts`** — activates the Stampy plugin on the
+  tests instance, seeds a list via `wp stampy seed`, stores list ID in
+  `STAMPY_E2E_LIST_ID` env var.
+- **`tests/e2e/signup.spec.ts`** — 3 E2E tests: full signup→confirm
+  journey (signup → Mailpit → confirm link → confirmed page), signup
+  without consent fails, signup without list_ids fails.
+- **`eslint.config.cjs`** — extended with `camelcase` rule
+  (`properties: 'never'` for WordPress snake_case attributes), disabled
+  `import/no-extraneous-dependencies` (WordPress externals not in
+  package.json), added `jest`/`window`/`document` globals.
+- **`package.json`** — added `peerDependencies` for WordPress externals
+  (`@wordpress/api-fetch`, `@wordpress/blocks`, `@wordpress/components`,
+  `@wordpress/i18n`).
+
+### Test results
+- Jest: 17 tests (14 block edit + 3 existing)
+- PHP unit: 26 tests
+- PHP integration: 75 tests
+- Playwright E2E: 6 tests (3 smoke + 3 signup)
+- All `validate:fast` + `validate:docker` green. PHPStan: 0 errors.
+
+### Gotchas discovered
+- **wp-scripts auto-discovers block.json**: No explicit entry points needed
+  in `package.json` — `wp-scripts build` scans `src/` for `**/block.json`
+  and creates webpack entry points from `editorScript`/`viewScript` fields.
+  The `file:` prefix in block.json is relative to the block.json file
+  location and is rewritten to `.js` in the built output.
+- **WordPress externals not in package.json**: `@wordpress/blocks`,
+  `@wordpress/components`, `@wordpress/i18n`, `@wordpress/api-fetch`,
+  `@wordpress/block-editor` are provided by WordPress at runtime (via
+  `DependencyExtractionWebpackPlugin`). They're not npm dependencies but
+  ESLint flags them with `import/no-extraneous-dependencies`. Fixed by
+  disabling the rule and adding `peerDependencies` in `package.json`.
+- **Jest with WordPress packages**: Since WordPress packages aren't
+  installed on the host, Jest tests need `moduleNameMapper` entries
+  pointing to mock files in `tests/jest/mocks/`. The
+  `@wordpress/scripts/config/babel-transform` must be used as the Jest
+  transform to handle TypeScript/JSX.
+- **`react-dom/server` in jsdom**: `TextEncoder`/`TextDecoder` are not
+  available in the jsdom environment. Must add them in the Jest setup
+  via `require('util')`.
+- **Block attributes use snake_case**: WordPress block.json attributes
+  conventionally use snake_case (`list_ids`, `show_first_name`). ESLint's
+  `camelcase` rule must be configured with `properties: 'never'` to allow
+  snake_case property access, and local variables should be renamed to
+  camelCase (e.g., `const listIds = attributes.list_ids`).
+- **E2E plugin activation**: The tests instance (:8889) has Stampy
+  **inactive** by default. The Playwright `globalSetup` must activate the
+  plugin via `wp plugin activate stampy` before running tests.
+- **Mailpit API**: Message search uses `GET /api/v1/search?query=to:ADDRESS`.
+  Message detail uses `GET /api/v1/message/{ID}` (capital `ID`). Text body
+  is in the `Text` field (capital T).
+- **Confirmation URL format**: The confirmation link uses query parameters
+  (`?stampy_confirm=TOKEN&sig=SIGNATURE`), not a path-based URL
+  (`/stampy/confirm/`). The regex to extract it must match
+  `stampy_confirm=` not `stampy/confirm`.
