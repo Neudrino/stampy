@@ -14,6 +14,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Repositories;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Stampy\Schema;
 use stdClass;
 use wpdb;

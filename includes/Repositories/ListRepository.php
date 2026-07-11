@@ -12,6 +12,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Repositories;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Stampy\Schema;
 use stdClass;
 use wpdb;
@@ -121,6 +126,28 @@ class ListRepository {
 	}
 
 	/**
+	 * Get all lists with subscriber counts.
+	 *
+	 * @return array<int, stdClass>
+	 */
+	public function all_with_counts(): array {
+		$wpdb     = $this->wpdb;
+		$lists    = $this->lists_table();
+		$junction = $this->junction_table();
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$results = $wpdb->get_results(
+			"SELECT l.*, COUNT(sl.subscriber_id) AS subscriber_count
+			FROM $lists l
+			LEFT JOIN $junction sl ON l.id = sl.list_id AND sl.status = 'subscribed'
+			GROUP BY l.id
+			ORDER BY l.name ASC"
+		);
+		// phpcs:enable
+
+		return null !== $results ? $results : array();
+	}
+
+	/**
 	 * Add a subscriber to a list (upsert).
 	 *
 	 * If the junction row already exists as `unsubscribed`, flips it back
@@ -199,6 +226,65 @@ class ListRepository {
 			array( '%s', '%s' ),
 			array( '%d', '%d' )
 		);
+	}
+
+	/**
+	 * Update a list's name, slug, and description.
+	 *
+	 * @param int    $id          List ID.
+	 * @param string $name        New name.
+	 * @param string $slug        New slug.
+	 * @param string $description New description.
+	 * @return bool True on success.
+	 */
+	public function update( int $id, string $name, string $slug, string $description = '' ): bool {
+		$wpdb = $this->wpdb;
+		return (bool) $wpdb->update(
+			$this->lists_table(),
+			array(
+				'name'        => $name,
+				'slug'        => $slug,
+				'description' => $description,
+			),
+			array( 'id' => $id ),
+			array( '%s', '%s', '%s' ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Delete a list and all its subscriber memberships.
+	 *
+	 * @param int $id List ID.
+	 * @return void
+	 */
+	public function delete( int $id ): void {
+		$wpdb = $this->wpdb;
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$wpdb->delete( $this->junction_table(), array( 'list_id' => $id ), array( '%d' ) );
+		$wpdb->delete( $this->lists_table(), array( 'id' => $id ), array( '%d' ) );
+		// phpcs:enable
+	}
+
+	/**
+	 * Count subscribers in a list (by membership status).
+	 *
+	 * @param int    $id     List ID.
+	 * @param string $status Optional status filter (subscribed|unsubscribed).
+	 * @return int
+	 */
+	public function count_subscribers( int $id, string $status = 'subscribed' ): int {
+		$wpdb     = $this->wpdb;
+		$junction = $this->junction_table();
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM $junction WHERE list_id = %d AND status = %s",
+				$id,
+				$status
+			)
+		);
+		// phpcs:enable
 	}
 
 	/**

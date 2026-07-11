@@ -11,6 +11,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Rest;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Stampy\SignupService;
 use WP_REST_Request;
 use WP_REST_Response;

@@ -11,6 +11,11 @@ declare( strict_types=1 );
 
 namespace Stampy;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Static utility class for token generation and verification.
  */

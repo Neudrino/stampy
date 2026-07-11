@@ -11,6 +11,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Rest;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Registers Stampy's REST API controllers.
  */

@@ -12,6 +12,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Validators;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Registry of field-type validators.
  */

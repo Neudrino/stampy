@@ -9,6 +9,11 @@ declare( strict_types=1 );
 
 namespace Stampy\SpamGuards;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * Immutable result returned by a SpamGuardInterface::check().
  */
