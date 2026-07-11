@@ -9,8 +9,22 @@
  */
 
 declare global {
+	interface StampyList {
+		id: number;
+		name: string;
+		slug: string;
+		description: string;
+	}
+
+	interface StampyGlobal {
+		restUrl: string;
+		restNonce: string;
+		lists: StampyList[];
+		consentText: string;
+	}
+
 	interface Window {
-		stampy?: Record< string, unknown >;
+		stampy?: StampyGlobal;
 	}
 }
 

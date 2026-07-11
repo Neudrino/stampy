@@ -41,7 +41,7 @@
     "scripts": {
         "lint": "phpcs",
         "lint:fix": "phpcbf",
-        "analyse": "phpstan analyse --memory-limit=512M",
+        "analyse": "phpstan analyse --memory-limit=1G",
         "test:unit": "vendor/bin/phpunit --testsuite=unit",
         "test:integration": "STAMPY_TEST_INTEGRATION=1 vendor/bin/phpunit --testsuite=integration"
     }

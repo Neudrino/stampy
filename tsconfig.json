@@ -13,7 +13,7 @@
 		"resolveJsonModule": true,
 		"allowJs": false,
 		"isolatedModules": true,
-		"types": ["jest"]
+		"types": ["jest", "node"]
 	},
 	"include": ["src/**/*", "types/**/*", "tests/e2e/**/*"]
 }

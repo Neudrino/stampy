@@ -19,6 +19,7 @@ export default defineConfig( {
 		timeout: 5_000,
 	},
 	reporter: [ [ 'html', { open: 'never' } ] ],
+	globalSetup: './tests/e2e/global-setup.ts',
 	use: {
 		baseURL: 'http://localhost:8889',
 		actionTimeout: 10_000,

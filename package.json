@@ -27,7 +27,7 @@
 		"test:integration:php": "WP_ENV_HOME=./.wp-env-home wp-env run tests-cli --env-cwd=wp-content/plugins/stampy composer test:integration",
 		"test:e2e": "wp-scripts test-playwright",
 		"validate:fast": "npm-run-all --continue-on-error lint:js lint:css type-check test:unit:js lint:php analyse:php test:unit:php",
-		"validate:docker": "npm-run-all --continue-on-error test:integration:php test:e2e",
+		"validate:docker": "npm-run-all env:clean:tests --continue-on-error test:integration:php test:e2e",
 		"validate": "npm-run-all env:start && npm-run-all --continue-on-error validate:fast && npm run validate:docker",
 		"prepare": "husky"
 	},
@@ -44,5 +44,11 @@
 	},
 	"overrides": {
 		"zod": "^4.4.3"
+	},
+	"peerDependencies": {
+		"@wordpress/api-fetch": "^7.0.0",
+		"@wordpress/blocks": "^15.0.0",
+		"@wordpress/components": "^30.0.0",
+		"@wordpress/i18n": "^6.0.0"
 	}
 }

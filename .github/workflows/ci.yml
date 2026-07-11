@@ -116,6 +116,10 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run env:start
+      - name: Composer install (in container)
+        run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy composer install --no-interaction --prefer-dist
+        env:
+          WP_ENV_HOME: ./.wp-env-home
       - run: npm run test:e2e
         env:
           # Browsers already installed above; skip wp-scripts' redundant install.
