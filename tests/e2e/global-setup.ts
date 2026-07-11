@@ -45,4 +45,7 @@ export default async function globalSetup() {
 			'Failed to create E2E test list. Plugin may not be active (missing vendor/?).'
 		);
 	}
+
+	// Seed subscribers so the admin subscribers table has data rows.
+	wpCli( `wp stampy seed --subscribers=10 --list=e2e-test` );
 }

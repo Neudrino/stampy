@@ -43,6 +43,12 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **Tests instance (:8889) has Stampy inactive by default** — the Playwright `globalSetup` must run `wp plugin activate stampy` before tests.
 - **Tests instance (:8889) has no theme after `env:clean:tests` or integration test runs** — E2E tests must use the REST API (`?rest_route=/`), not front-end HTML assertions. Pretty permalinks are also off; always use `?rest_route=/` instead of `/wp-json/`.
 - **Test dirs are PSR-4 cased:** `Unit/` and `Integration/` (capitalized) under `tests/phpunit/`.
+- **`dbDelta()` implicitly commits the test transaction.** The first `Installer::install()` call in a test run uses `CREATE TABLE IF NOT EXISTS` (DDL), which causes an implicit MySQL commit. Data created in `setUp()` or test methods on the first test run persists. Fix: use `find_by_slug()` before `create()` in `setUp()` to avoid duplicate key errors; don't create fixtures in `setUp()` that would pollute other test classes.
+- **`check_admin_referer()` reads from `$_REQUEST`, not `$_POST`.** In the CLI test context, setting `$_POST` alone is insufficient — `$_REQUEST` is empty. Tests must set both: `$_POST = ...; $_REQUEST = $_POST;` and clean up in `tearDown()`: `unset( $_POST, $_REQUEST );`.
+- **`wp_safe_redirect()` calls `exit` after the redirect.** In tests, this terminates the process. Fix: add a `wp_redirect` filter that throws a `RuntimeException`, then catch it in the test: `add_filter('wp_redirect', fn(): never => throw new \RuntimeException('redirect'), 1)`.
+- **`WP_List_Table` subclasses in a namespace need `use stdClass;`.** PHPStan resolves `stdClass` to `Stampy\Admin\stdClass` without the import. Also, `column_default()` parameter types must be `$item` (untyped) and `$column_name` (untyped/mixed) to match the parent — PHPStan flags contravariance violations otherwise.
+- **PHPCS `OneObjectStructurePerFile`** — `WP_List_Table` subclasses must be in their own files, not bundled with page renderers.
+- **E2E admin login helper**: Use `waitForSelector('#wpadminbar', { timeout: 15000 })` after clicking the login submit button — NOT `waitForLoadState('networkidle')`. The admin bar (`#wpadminbar`) appears on all WP admin pages and reliably indicates a successful login. `networkidle` races on fast runs and subsequent `page.goto()` calls to admin pages can land on the still-rendering login page.
 
 ## Code style
 
@@ -60,6 +66,7 @@ npm run validate           # full: env:start → validate:fast → validate:dock
   - `Validators/` — field-type validator registry (interface, email/text/acceptance validators, singleton registry).
   - `Rest/` — REST API controllers (signup, confirm, unsubscribe, preferences).
   - `Email/` — confirmation email service.
+  - `Admin/` — admin menu, subscribers list table + detail view, lists list table + CRUD. List creation redirects to list overview (not edit view) after save.
   - `Security.php` — token generation, SHA-256 hashing, HMAC signing/verification.
   - `SignupService.php` — core opt-in business logic (signup pipeline + confirm pipeline).
   - `Rewrites.php` — virtual endpoint rewrite rules + HTML page rendering.

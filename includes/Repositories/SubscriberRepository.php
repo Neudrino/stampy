@@ -13,6 +13,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Repositories;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Stampy\Schema;
 use stdClass;
 use wpdb;
@@ -229,6 +234,104 @@ class SubscriberRepository {
 			$wpdb->query( 'ROLLBACK' );
 			throw $e;
 		}
+	}
+
+	/**
+	 * Get all subscribers with optional filtering, search, and pagination.
+	 *
+	 * @param array<string, mixed> $args {
+	 *     Optional. Query arguments.
+	 *     @type string $status   Filter by status (pending|confirmed|unsubscribed).
+	 *     @type string $search   Search term for email (LIKE).
+	 *     @type int    $per_page Number of rows per page. Default 20.
+	 *     @type int    $page     Page number (1-based). Default 1.
+	 *     @type string $orderby  Column to order by. Default 'created_at'.
+	 *     @type string $order    ASC or DESC. Default 'DESC'.
+	 * }
+	 * @return array<int, stdClass> Subscriber rows.
+	 */
+	public function get_all( array $args = array() ): array {
+		$wpdb    = $this->wpdb;
+		$table   = $this->table();
+		$status  = isset( $args['status'] ) ? sanitize_key( $args['status'] ) : '';
+		$search  = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+		$perpage = max( 1, (int) ( $args['per_page'] ?? 20 ) );
+		$page    = max( 1, (int) ( $args['page'] ?? 1 ) );
+		$offset  = ( $page - 1 ) * $perpage;
+
+		$allowed_orderby = array( 'id', 'email', 'status', 'created_at', 'confirmed_at' );
+		$orderby         = in_array( $args['orderby'] ?? 'created_at', $allowed_orderby, true ) ? ( $args['orderby'] ?? 'created_at' ) : 'created_at';
+		$order           = strtoupper( $args['order'] ?? 'DESC' ) === 'ASC' ? 'ASC' : 'DESC';
+
+		$where  = '1=1';
+		$params = array();
+
+		if ( '' !== $status && in_array( $status, array( 'pending', 'confirmed', 'unsubscribed' ), true ) ) {
+			$where   .= ' AND status = %s';
+			$params[] = $status;
+		}
+
+		if ( '' !== $search ) {
+			$where   .= ' AND email LIKE %s';
+			$params[] = '%' . $wpdb->esc_like( $search ) . '%';
+		}
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		if ( count( $params ) > 0 ) {
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT * FROM $table WHERE $where ORDER BY $orderby $order LIMIT %d OFFSET %d",
+					array_merge( $params, array( $perpage, $offset ) )
+				)
+			);
+		} else {
+			$results = $wpdb->get_results(
+				"SELECT * FROM $table WHERE $where ORDER BY $orderby $order LIMIT $perpage OFFSET $offset"
+			);
+		}
+		// phpcs:enable
+
+		return null !== $results ? $results : array();
+	}
+
+	/**
+	 * Count subscribers with optional status and search filters.
+	 *
+	 * @param array<string, mixed> $args {
+	 *     Optional. Query arguments.
+	 *     @type string $status Filter by status.
+	 *     @type string $search Search term for email (LIKE).
+	 * }
+	 * @return int
+	 */
+	public function count_filtered( array $args = array() ): int {
+		$wpdb   = $this->wpdb;
+		$table  = $this->table();
+		$status = isset( $args['status'] ) ? sanitize_key( $args['status'] ) : '';
+		$search = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+
+		$where  = '1=1';
+		$params = array();
+
+		if ( '' !== $status && in_array( $status, array( 'pending', 'confirmed', 'unsubscribed' ), true ) ) {
+			$where   .= ' AND status = %s';
+			$params[] = $status;
+		}
+
+		if ( '' !== $search ) {
+			$where   .= ' AND email LIKE %s';
+			$params[] = '%' . $wpdb->esc_like( $search ) . '%';
+		}
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
+		if ( count( $params ) > 0 ) {
+			$count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table WHERE $where", $params ) );
+		} else {
+			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table WHERE $where" );
+		}
+		// phpcs:enable
+
+		return $count;
 	}
 
 	/**
