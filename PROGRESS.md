@@ -399,8 +399,137 @@ Status: **COMPLETE** ✓
   - Deletes plugin options (`stampy_db_version`,
     `stampy_delete_data_on_uninstall`).
   - Clears scheduled events (`stampy_daily_purge_pending_signups`).
-  - All gated behind `stampy_delete_data_on_uninstall` option (defaults
-    to `'1'` = on — all data removed by default). The admin settings UI
-    to toggle this ships in Phase 10.
+   - All gated behind `stampy_delete_data_on_uninstall` option (defaults
+     to `'1'` = on — all data removed by default). The admin settings UI
+     to toggle this ships in Phase 10.
+
+---
+
+## Phase 3 — Opt-in core (headless)
+
+Status: **COMPLETE** ✓
+
+### Requirements (from PLAN.md §9 Phase 3)
+- [x] Staged signups (`pending_signups` + payload)
+- [x] Spam-guard chain + field-type validator registry
+- [x] Consent-text registry integration
+- [x] REST signup/confirm (`form_id` + `fields` contract)
+- [x] Virtual preference page
+- [x] One-click unsubscribe (RFC 8058)
+- [x] Expiry cron
+- [x] Rewrite rules for virtual endpoints, flush on activation
+
+### Verification targets
+- [x] Unit tests (spam guards, validators) — 26 tests green
+- [x] Integration tests (REST endpoints, merge policy, wp_mail asserts,
+      token tampering, expiry cron, HMAC signing) — 75 tests green
+- [x] All suites green: `validate:fast` + `validate:docker` (107 tests total)
+
+### What was done
+- **Security** (`includes/Security.php`): CSPRNG token generation (32 bytes
+  → 64 hex chars), SHA-256 token hashing, constant-time verification
+  (`hash_equals`), per-site HMAC secret (generated on activation, stored
+  in non-autoloaded `stampy_hmac_secret` option), `sign()`/`verify()` for
+  URL parameter signing.
+- **Spam-guard chain** (`includes/SpamGuards/`):
+  - `SpamGuardInterface` — pluggable interface (§10 R3/R4 add quiz + 3rd-party)
+  - `SpamGuardResult` — immutable pass/fail value object
+  - `HoneypotGuard` — hidden field `website_check`, rejects non-empty
+  - `RateLimitGuard` — transient-based per-IP limit (5/hour default), no
+    IP persisted
+  - `SpamGuardChain` — ordered pipeline, stops at first failure;
+    `default_chain()` factory
+- **Validator registry** (`includes/Validators/`):
+  - `FieldValidatorInterface` — pluggable type validators (§10 R2 adds more)
+  - `ValidationResult` — immutable valid/invalid value object with
+    sanitized value
+  - `EmailValidator` — sanitize + validate via `is_email()`, normalizes
+  - `TextValidator` — `sanitize_text_field()`
+  - `AcceptanceValidator` — consent checkbox, must be truthy
+  - `ValidatorRegistry` — singleton, maps types to validators, `validate()`
+    delegates to the right one
+- **SignupService** (`includes/SignupService.php`): Core business logic
+  orchestrating the full pipeline:
+  - `signup()`: spam-guard chain → validate email/consent/fields →
+    check if subscriber is already confirmed (skip re-confirmation,
+    apply immediate list membership + merge) → otherwise stage in
+    `pending_signups` with fresh token, send confirmation email.
+    Anti-enumeration: same "check your email" response regardless.
+  - `confirm()`: hash token → find pending signup → check expiry →
+    promote subscriber to confirmed → generate unsub token if needed →
+    apply staged attributes (merge policy: non-empty overwrites, empty
+    never erases) → add list memberships (flips unsubscribed junctions
+    back to subscribed) → delete pending signup → fire action.
+- **Confirmation email** (`includes/Email/ConfirmationEmail.php`):
+  Translatable defaults, `apply_filters` on subject and body, builds
+  signed confirmation URL, fires `stampy_confirmation_email_sent` action.
+- **REST controllers** (`includes/Rest/`):
+  - `RestApi` — registers all controllers on `rest_api_init`
+  - `SignupController` — `POST /stampy/v1/signup` with `{ email, fields,
+    consent, form_id, list_ids, website_check }` contract
+  - `ConfirmController` — `GET /stampy/v1/confirm?token=...`
+  - `UnsubscribeController` — `POST /stampy/v1/unsubscribe` (RFC 8058
+    one-click, per-list) + `POST /stampy/v1/unsubscribe-all` (global)
+  - `PreferencesController` — `GET/POST /stampy/v1/preferences` (list
+    memberships with toggles + global opt-out)
+- **Rewrites** (`includes/Rewrites.php`): Virtual endpoints for
+  `/stampy/confirm/{token}`, `/stampy/preferences/{s}/{t}/{sig}`, and
+  `/stampy/unsubscribe/{s}/{list}/{t}/{sig}`. Renders HTML pages with
+  `template_redirect`. Also supports query-var-based access (works
+  without pretty permalinks).
+- **Lifecycle updates**: `Lifecycle::register()` now hooks
+  `stampy_daily_purge_pending_signups` action → `purge_expired_signups()`.
+  Activation generates HMAC secret.
+- **Uninstall**: Added `stampy_hmac_secret` to deleted options.
+- **Bootstrap**: `stampy.php` now registers `Rewrites::register()` and
+  `Rest\RestApi::register()`.
+- **Test bootstrap**: Added `wp_mail` capture filter
+  (`stampy_test_capture_mail`) for integration test email assertions via
+  `$GLOBALS['phpmailer_mock_sent']`.
+
+### Tests added
+- **Unit tests** (23 new, 26 total):
+  - `SpamGuardTest` — honeypot pass/fail, chain stops at first failure,
+    result factories.
+  - `ValidatorTest` — email accept/reject/normalize, text sanitization,
+    acceptance true/false/string, registry delegation, unknown type,
+    result factories.
+- **Integration tests** (26 new, 75 total):
+  - `SignupEndpointTest` (7 tests): valid signup creates pending +
+    sends email, consent required, list_ids required, invalid email
+    rejected, honeypot blocks, confirmed subscriber gets immediate
+    membership (no re-confirmation email), re-signup refreshes.
+  - `ConfirmEndpointTest` (5 tests): full signup→confirm promotes +
+    adds lists + sets token, merge policy (non-empty overwrites, empty
+    never erases), invalid token fails, expired token fails, resubscribe
+    flips unsubscribed→subscribed.
+  - `UnsubscribePreferencesTest` (8 tests): one-click unsubscribe, global
+    unsubscribe, invalid signature rejected, preferences GET returns
+    memberships, preferences POST toggles lists, opt-out globally
+    unsubscribes, invalid signature on preferences fails.
+  - `ExpiryCronTest` (7 tests): purge expired removes expired signups,
+    keeps valid ones, cron callback purges, HMAC secret generated on
+    activation, token generation produces 64-char hex, token hashing
+    deterministic, sign+verify roundtrip + tamper rejection.
+
+### Gotchas discovered
+- **PSR-4 namespace for `includes/Email/`**: The class
+  `ConfirmationEmail` in `includes/Email/ConfirmationEmail.php` must
+  use namespace `Stampy\Email` (not `Stampy`), or Composer's autoloader
+  skips it silently. The `use Stampy\Security;` import is needed since
+  `Security` is in the root `Stampy` namespace.
+- **`wp_mail` capture in integration tests**: The WordPress test
+  framework's mock PHPMailer doesn't actually capture `wp_mail`
+  arguments. A `wp_mail` filter in `tests/phpunit/bootstrap.php`
+  (`stampy_test_capture_mail`) captures the `to`, `subject`, `body`,
+  and `headers` into `$GLOBALS['phpmailer_mock_sent']` for assertions.
+- **PHPCS multi-line `@param` with `{`**: Using `@param array<mixed>
+  $request {` (WordPress-style structured docblock) triggers
+  `Squiz.Commenting.FunctionComment.ParamCommentFullStop` because PHPCS
+  sees the comment as ending at `{` and expects a period. Workaround:
+  use a regular `@param` description without the `{` structured format.
+- **PHPCS short ternary**: `$request->get_param( 'form_id' ) ?: null`
+  triggers `Universal.Operators.DisallowShortTernary`. Use
+  `null !== $request->get_param( 'form_id' ) ? ... : null` instead.
   - PHPCS: all variables in `uninstall.php` must use the `stampy_` prefix
     (global namespace → `WordPress.NamingConventions.PrefixAllGlobals`).
