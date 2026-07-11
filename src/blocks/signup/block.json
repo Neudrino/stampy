@@ -1,0 +1,32 @@
+{
+	"$schema": "https://schemas.wp.org/trunk/block.json",
+	"apiVersion": 3,
+	"name": "stampy/signup",
+	"title": "Stampy Signup",
+	"category": "widgets",
+	"description": "Double opt-in mailing-list signup form with email, optional name fields, consent checkbox, and list selection.",
+	"keywords": [ "newsletter", "mailing list", "subscribe", "signup" ],
+	"version": "0.0.1",
+	"textdomain": "stampy",
+	"attributes": {
+		"list_ids": {
+			"type": "array",
+			"items": { "type": "integer" },
+			"default": []
+		},
+		"show_first_name": {
+			"type": "boolean",
+			"default": true
+		},
+		"show_last_name": {
+			"type": "boolean",
+			"default": true
+		}
+	},
+	"supports": {
+		"html": false,
+		"align": true
+	},
+	"editorScript": "file:./index.ts",
+	"viewScript": "file:./view.ts"
+}
