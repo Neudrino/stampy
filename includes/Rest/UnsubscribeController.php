@@ -12,6 +12,11 @@ declare( strict_types=1 );
 
 namespace Stampy\Rest;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 use Stampy\Repositories\ListRepository;
 use Stampy\Repositories\SubscriberRepository;
 use Stampy\Security;

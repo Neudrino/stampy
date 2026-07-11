@@ -638,3 +638,104 @@ Status: **COMPLETE** ✓
   (`?stampy_confirm=TOKEN&sig=SIGNATURE`), not a path-based URL
   (`/stampy/confirm/`). The regex to extract it must match
   `stampy_confirm=` not `stampy/confirm`.
+
+---
+
+## Phase 5 — Admin Subscribers/Lists (COMPLETE)
+
+### Requirements fulfilled
+
+- Top-level "Stampy" admin menu with Subscribers and Lists sub-pages.
+- `WP_List_Table` for subscribers: columns (Email, Status, Lists, Created,
+  Confirmed), bulk actions (delete, unsubscribe, re-subscribe), row actions
+  (edit, delete), search by email, filter by status, pagination.
+- Subscriber detail/edit view: attributes read-only (from `subscriber_meta`
+  joined with `fields` definitions where `show_in_admin=1`), editable status
+  (dropdown) and list memberships (checkboxes). Capability check
+  `manage_options`, nonce protection on all form submissions.
+- `WP_List_Table` for lists: columns (Name, Slug, Description, Subscribers
+  count), row actions (edit, delete), bulk delete, add new list form.
+- List edit view: edit name, slug, description.
+- Registered admin via `add_action('admin_menu', ...)` in `stampy.php`
+  bootstrap.
+- `admin_post` handlers for subscriber and list save forms, with nonce +
+  capability checks.
+
+### Files created/modified
+
+- `includes/Admin/AdminMenu.php` — menu registration, `admin_post` handler
+  registration.
+- `includes/Admin/SubscribersPage.php` — render list table + detail view,
+  `handle_save()` for status/list editing.
+- `includes/Admin/SubscribersListTable.php` — `WP_List_Table` subclass with
+  search, status filter, bulk actions.
+- `includes/Admin/ListsPage.php` — render list table + add/edit form,
+  `handle_save()` for list CRUD.
+- `includes/Admin/ListsListTable.php` — `WP_List_Table` subclass with
+  subscriber counts, bulk delete.
+- `includes/Repositories/SubscriberRepository.php` — added `get_all()`
+  (pagination + filtering + search + sorting), `count_filtered()`.
+- `includes/Repositories/ListRepository.php` — added `update()`, `delete()`,
+  `count_subscribers()`, `all_with_counts()`.
+- `stampy.php` — added `Admin\AdminMenu::register()` to bootstrap.
+- `tests/phpunit/Integration/AdminSubscribersTest.php` — 10 tests: menu
+  registration, get_all/count_filtered, status update, list membership
+  add/remove, capability check, nonce check, subscriber delete.
+- `tests/phpunit/Integration/AdminListsTest.php` — 9 tests: list CRUD,
+  count_subscribers, all_with_counts, handle_save create/update, capability
+  check, nonce check.
+- `tests/e2e/admin.spec.ts` — 3 E2E tests: subscribers page loads, lists page
+  loads, create a new list via the form.
+- `phpstan-baseline.neon` — regenerated for new `wpdb::prepare()` literal-
+  string false positives.
+
+### Test counts
+
+- Jest: 17 (unchanged)
+- PHP unit: 26 (unchanged)
+- PHP integration: 94 (was 75, +19)
+- Playwright E2E: 9 (was 6, +3)
+- **Total: 146 tests** (was 124)
+
+### Gotchas discovered
+
+- **`dbDelta()` implicitly commits the test transaction.** The first
+  `Installer::install()` call in a test run uses `CREATE TABLE IF NOT
+  EXISTS`, which is DDL and causes an implicit MySQL commit. Data created
+  in `setUp()` before `Installer::install()` (or in the same test) is
+  committed and persists across tests. Fix: use `find_by_slug()` before
+  `create()` to avoid duplicate key errors, and don't create fixtures in
+  `setUp()` that would pollute other test classes.
+- **`check_admin_referer()` reads from `$_REQUEST`, not `$_POST`.** In the
+  CLI test context, setting `$_POST` alone is insufficient — `$_REQUEST`
+  is empty. Tests must set both: `$_POST = ...; $_REQUEST = $_POST;`
+- **`wp_safe_redirect()` calls `exit` after the redirect.** In tests, this
+  terminates the process. Fix: add a `wp_redirect` filter that throws a
+  `RuntimeException`, then catch it in the test: `add_filter('wp_redirect',
+  fn(): never => throw new \RuntimeException('redirect'), 1)`.
+- **`WP_List_Table` subclasses in a namespace need `use stdClass;`.** PHPStan
+  resolves `stdClass` to `Stampy\Admin\stdClass` without the import.
+- **`WP_List_Table::column_default()` parameter types must be `mixed`** (not
+  `string`) to match the parent class signature. PHPStan flags
+  contravariance violations otherwise.
+- **PHPCS `OneObjectStructurePerFile`** — `WP_List_Table` subclasses must be
+  in their own files, not bundled with page renderers.
+
+### Post-completion fixes (manual testing feedback)
+
+- **List creation redirect**: `ListsPage::handle_save()` redirected to the
+  edit view (`action=edit&list_id=...`) after creating a new list. The
+  expected behavior is to redirect back to the list overview. Fixed by
+  removing `action` and `list_id` from the redirect query args, keeping
+  only `page=stampy-lists&updated=1`. E2E test updated to assert the
+  redirect lands on the overview page with the new list visible in the
+  table.
+- **E2E `adminLogin` race condition**: the helper used
+  `waitForLoadState('networkidle')` after clicking the login submit button,
+  which didn't reliably wait for the WP admin dashboard to finish loading.
+  On fast runs, the subsequent `page.goto()` to an admin page would land
+  on the still-rendering login page, causing `locator('h1')` to match the
+  login page's `<h1>` elements instead of the admin page's heading. Fixed
+  by replacing `waitForLoadState('networkidle')` with
+  `waitForSelector('#wpadminbar', { timeout: 15000 })` — the admin bar
+  appears on all WP admin pages and reliably indicates a successful login.

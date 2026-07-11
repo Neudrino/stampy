@@ -37,7 +37,7 @@ parameters:
 
 		-
 			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
-			count: 5
+			count: 6
 			path: includes/Repositories/ListRepository.php
 
 		-
@@ -62,7 +62,7 @@ parameters:
 
 		-
 			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
-			count: 9
+			count: 11
 			path: includes/Repositories/SubscriberRepository.php
 
 		-

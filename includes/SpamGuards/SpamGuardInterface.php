@@ -13,6 +13,11 @@ declare( strict_types=1 );
 
 namespace Stampy\SpamGuards;
 
+// Prevent direct access.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 /**
  * A single stage in the spam-guard chain.
  *
