@@ -28,5 +28,6 @@
 		"align": true
 	},
 	"editorScript": "file:./index.ts",
-	"viewScript": "file:./view.ts"
+	"viewScript": "file:./view.ts",
+	"style": "file:./style-index.css"
 }

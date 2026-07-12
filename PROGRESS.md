@@ -432,7 +432,7 @@ Status: **COMPLETE** ✓
   in non-autoloaded `stampy_hmac_secret` option), `sign()`/`verify()` for
   URL parameter signing.
 - **Spam-guard chain** (`includes/SpamGuards/`):
-  - `SpamGuardInterface` — pluggable interface (§10 R3/R4 add quiz + 3rd-party)
+  - `SpamGuardInterface` — pluggable interface (Phase 11 adds quiz; Phase 12 adds Turnstile + Friendly Captcha)
   - `SpamGuardResult` — immutable pass/fail value object
   - `HoneypotGuard` — hidden field `website_check`, rejects non-empty
   - `RateLimitGuard` — transient-based per-IP limit (5/hour default), no
@@ -440,7 +440,7 @@ Status: **COMPLETE** ✓
   - `SpamGuardChain` — ordered pipeline, stops at first failure;
     `default_chain()` factory
 - **Validator registry** (`includes/Validators/`):
-  - `FieldValidatorInterface` — pluggable type validators (§10 R2 adds more)
+  - `FieldValidatorInterface` — pluggable type validators (Phase 13 adds more; Phase 14 form builder adds the rest)
   - `ValidationResult` — immutable valid/invalid value object with
     sanitized value
   - `EmailValidator` — sanitize + validate via `is_email()`, normalizes
@@ -543,7 +543,7 @@ Status: **COMPLETE** ✓
 - [x] Consent checkbox (required, text from consent-text registry)
 - [x] List selection requiring ≥1 list — editor notice + front-end no-op if none
 - [x] Accessibility (labels, aria-required, aria-invalid, aria-describedby, honeypot)
-- [x] Attributes deprecation-ready for the §10 R2 form builder
+- [x] Attributes deprecation-ready for the Phase 14 form builder
 - [x] Jest tests for block edit component
 - [x] First E2E signup→confirm journey
 
@@ -1443,3 +1443,231 @@ render path did not. Fix: added the same inline CSS to the
   visibility wait
 - `tests/e2e/smtp.spec.ts` — robust admin login
 - `includes/SignupBlock.php` — honeypot field hidden with inline CSS
+
+## Phase 10 — Compliance & Release
+
+### Overview
+
+Implemented all Phase 10 deliverables: GDPR privacy hooks, admin
+compliance settings, i18n (POT + German translation), readme.txt
+polish, SVG menu icon, release.yml workflow, and `.distignore`.
+
+### Privacy export/erase (GDPR)
+
+- **`includes/Privacy.php`** — registers
+  `wp_privacy_personal_data_exporters` and
+  `wp_privacy_personal_data_erasers` filters. Export covers 6 data
+  groups: subscriber profile, subscriber attributes (meta), list
+  memberships, pending signups, campaign recipients, campaign clicks.
+  Erase uses `SubscriberRepository::delete()` which cascades across
+  all related tables (meta, lists, pending, recipients, clicks).
+- Registered in `stampy.php` `bootstrap()` via `Privacy::register()`.
+- **9 integration tests** in `tests/phpunit/Integration/PrivacyTest.php`:
+  exporter/eraser registration, empty export, profile export, meta
+  export, list memberships export, campaign recipients + clicks
+  export, full erase, erase for nonexistent email, erase removes
+  campaign data.
+
+### Admin compliance settings
+
+- **`includes/Admin/SettingsPage.php`** — added "Compliance" section
+  with:
+  - **Physical Address** textarea — saves to
+    `stampy_physical_address` option (CAN-SPAM requirement, shown in
+    email footer).
+  - **Data on Uninstall** checkbox — saves to
+    `stampy_delete_data_on_uninstall` option (defaults to on).
+
+### i18n
+
+- **`load_plugin_textdomain('stampy', ...)`** added to `bootstrap()`
+  in `stampy.php`.
+- **`languages/stampy.pot`** — generated via `wp i18n make-pot`,
+  covers PHP + block.json strings.
+- **`languages/stampy-de_DE.po` + `.mo`** — German translation (165
+  strings).
+- **`wp_set_script_translations`** added for:
+  - `stampy-campaign-editor-editor-script` in
+    `CampaignPostType::enqueue_editor_assets()`
+  - `stampy-signup-editor-script` and `stampy-signup-view-script` in
+    `SignupBlock::register()`
+
+### readme.txt
+
+Fully rewritten with: feature list, installation instructions, FAQ
+(external service? tracking default? uninstall data? GDPR? i18n?),
+screenshots list, and detailed changelog.
+
+### Menu icon
+
+Uses the 🦒 giraffe emoji (U+1F992) rendered as an inline SVG data URI
+in `AdminMenu.php`. The emoji is URL-encoded and embedded in an SVG
+`<text>` element, so no external asset file is needed. A custom
+hand-crafted giraffe SVG was attempted first but didn't render well at
+20×20px; the emoji approach is crisp, instantly recognizable, and
+stays on-brand ("Stampy" the giraffe).
+
+### Release workflow
+
+- **`.github/workflows/release.yml`** — on `v*` tag push:
+  1. Build (npm + composer --no-dev --optimize-autoloader)
+  2. Version consistency check (git tag == plugin header ==
+     readme.txt stable tag)
+  3. Create zip via `.distignore`
+  4. Upload artifact + GitHub Release
+  5. Deploy to WP.org SVN (protected `wporg-deploy` environment)
+- **`.distignore`** — excludes dev files from the release zip.
+
+### Test results
+
+All tests green:
+- Jest: 24 (unchanged)
+- PHP unit: 3 (unchanged)
+- PHP integration: 199 (was 190, +9: `PrivacyTest`)
+- E2E: 20 (was 15, +5: bulk actions + first/last name columns)
+
+### Test stability fixes
+
+Fixed all integration test failures and E2E flakiness:
+
+#### Integration tests (9 failures → 0)
+
+Root cause: `dbDelta()` in `Installer::install()` causes an implicit
+MySQL commit, breaking the WP test transaction. Data persists across
+test methods and classes. Tests asserting absolute counts (`count() === 0`
+or `count() === 1`) fail when leftover data exists.
+
+Fixes applied:
+- **`SubscriberRepositoryTest`** — added `tearDown()` cleanup that
+  deletes all test-created subscribers (and their meta) AFTER
+  `parent::tearDown()`. Changed `test_count`, `test_count_by_status`,
+  `test_delete`, and `test_create_or_get_upserts_existing_email` to
+  use delta assertions (`$initial + N === $repo->count()`).
+- **`SignupEndpointTest`** — added `tearDown()` cleanup. Changed
+  `test_valid_signup_creates_pending_and_sends_email` and
+  `test_resignup_same_form_refreshes_pending` to record initial count
+  before the test and assert delta.
+- **`PrivacyTest::test_erase_removes_campaign_data`** — changed the
+  click count assertion from `SELECT COUNT(*) FROM campaign_clicks`
+  (counts ALL clicks from ALL tests) to `WHERE recipient_id = %d`
+  (scoped to the specific test's recipient).
+
+#### E2E tests (flaky → stable, 5/5 consecutive runs pass)
+
+Root causes and fixes:
+1. **Login race condition** — with `fullyParallel: true`, multiple
+   workers calling `adminLogin()` simultaneously caused session cookie
+   loss. Fix: `globalSetup` now logs in once via Playwright and saves
+   `tests/e2e/.auth/admin.json` via `context.storageState()`.
+   `playwright.config.ts` sets `storageState` so all tests start
+   authenticated. `adminLogin()` helpers now check if already logged
+   in and only fall back to the login form if the storage state is
+   invalid.
+2. **`Promise.all([waitForNavigation, click])` anti-pattern** —
+   `waitForNavigation` resolves on intermediate redirects, making it
+   unreliable for login flows. Replaced with bare `page.click()` +
+   `waitForSelector('#wpadminbar', { timeout: 30000 })`.
+3. **Mailpit race condition** — SMTP tests and campaign tests run in
+   parallel. SMTP tests reconfigure SMTP settings (pointing to dev
+   Mailpit port 1025) while campaign tests are sending emails.
+   Campaign emails arrive in dev Mailpit instead of tests Mailpit.
+   Fix: `waitForCampaignEmail()` now searches both `MAILPIT_TESTS_API`
+   (port 8026) and `MAILPIT_DEV_API` (port 8025) in a loop.
+4. **Static email subjects** — tests used `"E2E Campaign"` which
+   matched stale emails from previous runs. Fixed: all campaign
+   subjects now append `Date.now()` for uniqueness.
+5. **WP-CLI transient Docker failures** — `wp-env run tests-cli` fails
+   intermittently when multiple parallel workers spawn Docker exec
+   calls. Fix: `wpCli()` helper now retries 3 times with a 2s delay
+   and a 60s timeout (was 30s).
+6. **`page.locator('h1')` strict mode violation** — WP admin pages
+   have multiple `h1` elements. Fix: use `page.locator('.wrap h1')`.
+7. **`page.click('#search-submit')` timeout** — WP admin JS makes the
+   button "not stable". Fix: use `{ force: true }`.
+8. **Fixed 2s wait for email delivery** — replaced with polling
+   `waitForCampaignEmail()` that searches Mailpit every 500ms with a
+   30s timeout.
+9. **Test timeout too short** — campaign send + tracking tests need
+   WP-CLI calls + synchronous send + Mailpit polling. Fix:
+   `test.setTimeout(120_000)`.
+
+### Gotchas discovered
+
+- **WP privacy exporter `$page` parameter** — required by the WP API
+  but unused (all data fits in one page). PHPCS warns about unused
+  parameter. Fix: add `unset( $page );` after the null check.
+- **`wp_json_encode()` returns `string|false`** — PHPStan flags it.
+  Must check for `false` and provide a fallback.
+- **PHPCS `DisallowShortTernary`** — `wp_json_encode( $x ) ?: ''` is
+  forbidden. Use `false !== wp_json_encode( $x ) ? wp_json_encode( $x ) : ''`.
+- **Integration test data pollution with `dbDelta()`** — the
+  `Installer::install()` call uses `CREATE TABLE IF NOT EXISTS` +
+  `dbDelta()`, which causes an implicit MySQL commit. Data created in
+  test methods persists across test classes. PrivacyTest creates
+  subscribers and lists that pollute SendingEngineTest, TrackingTest,
+  and UnsubscribePreferencesTest. Fix: clean up ALL test-created data
+  in `tearDown()` AFTER `parent::tearDown()` (the WP test framework's
+  transaction rollback UNDOES deletes made before it).
+- **WP test framework transaction rollback** — `parent::tearDown()`
+  calls `ROLLBACK` on the WP test transaction. If you delete data
+  BEFORE `parent::tearDown()`, the rollback UNDOES your deletes (the
+  data was inserted within the transaction, even if `dbDelta()` broke
+  it). Fix: run cleanup queries AFTER `parent::tearDown()`.
+- **`$wpdb->insert_id` after a failed INSERT** — when
+  `$list_repo->create('Newsletter', 'newsletter')` fails due to a
+  duplicate key, `$wpdb->insert_id` retains the value from the last
+  SUCCESSFUL insert in the `lists` table. This means
+  `$this->list_id` could point to a completely different list. Fix:
+  use `find_by_slug()` in test setUp to get the correct list ID.
+- **E2E `storageState` eliminates login races** — with
+  `fullyParallel: true`, multiple workers logging in simultaneously
+  causes session cookie loss. `globalSetup` logs in once and saves
+  the session. All tests reuse it via `playwright.config.ts`
+  `storageState` setting.
+- **E2E campaign tests must search both Mailpit instances** — SMTP
+  tests reconfigure SMTP settings in parallel with campaign tests.
+  Campaign emails may arrive in dev Mailpit (port 1025) instead of
+  tests Mailpit (port 8026). `waitForCampaignEmail()` searches both.
+- **E2E `wpCli()` must retry on Docker failures** — transient
+  Docker exec failures when multiple workers run WP-CLI commands
+  simultaneously. 3 retries with 2s delay, 60s timeout.
+
+### Files created/modified
+
+- `includes/Privacy.php` — new, GDPR exporters + erasers
+- `stampy.php` — added `load_plugin_textdomain` + `Privacy::register()`
+- `includes/Admin/SettingsPage.php` — compliance section (address +
+  delete-data toggle)
+- `includes/Admin/AdminMenu.php` — uses 🦒 emoji SVG data URI menu icon
+- `includes/Admin/SubscribersListTable.php` — bulk actions refactored
+  to `handle_bulk_action()` on `load-{hook}`, first/last name columns
+- `includes/Admin/SubscribersPage.php` — form `method="post"`, bulk
+  success notice rendering
+- `includes/Campaigns/CampaignPostType.php` —
+  `wp_set_script_translations`
+- `includes/SignupBlock.php` — `wp_set_script_translations` for both
+  editor + view scripts
+- `languages/stampy.pot` — new, generated POT file
+- `languages/stampy-de_DE.po` — new, German translation
+- `languages/stampy-de_DE.mo` — new, compiled MO file
+- `readme.txt` — fully rewritten
+- `.github/workflows/release.yml` — new, release + deploy workflow
+- `.distignore` — new, dist exclusion list
+- `playwright.config.ts` — added `storageState` for shared login
+- `tests/e2e/global-setup.ts` — added Playwright login + storage state
+- `tests/e2e/admin.spec.ts` — bulk action E2E tests, `storageState`
+  login, `.wrap h1` selectors, `force: true` on search-submit
+- `tests/e2e/campaign-send.spec.ts` — unique subjects, dual-Mailpit
+  search, `wpCli()` retry, `waitForCampaignEmail()` polling
+- `tests/e2e/tracking.spec.ts` — unique subjects, dual-Mailpit search,
+  `wpCli()` retry, `waitForCampaignEmail()` polling, 120s timeout
+- `tests/e2e/campaign-admin-ui.spec.ts` — `storageState` login,
+  `wpCli()` retry
+- `tests/e2e/smtp.spec.ts` — `storageState` login, `.wrap h1` selectors
+- `tests/phpunit/Integration/PrivacyTest.php` — new, 9 integration tests
+- `tests/phpunit/Integration/AdminSubscribersTest.php` — 8 new bulk
+  action tests + fixed pre-existing tests with unique emails
+- `tests/phpunit/Integration/SubscriberRepositoryTest.php` — added
+  `tearDown()` cleanup, delta-based count assertions
+- `tests/phpunit/Integration/SignupEndpointTest.php` — added
+  `tearDown()` cleanup, delta-based count assertions

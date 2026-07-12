@@ -23,14 +23,14 @@ const MAILPIT_TESTS_API = 'http://localhost:8026/api/v1';
 async function adminLogin(
 	page: import('@playwright/test').Page
 ): Promise< void > {
-	await page.goto( `${ TESTS_URL }/wp-login.php` );
-	await page.fill( '#user_login', 'admin' );
-	await page.fill( '#user_pass', 'password' );
-	await Promise.all( [
-		page.waitForNavigation( { timeout: 20000 } ),
-		page.click( '#wp-submit' ),
-	] );
-	await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
+	await page.goto( `${ TESTS_URL }/wp-admin/` );
+	if ( page.url().includes( 'wp-login.php' ) ) {
+		await page.fill( '#user_login', 'admin' );
+		await page.fill( '#user_pass', 'password' );
+		await page.click( '#wp-submit' );
+		await page.waitForSelector( '#wpadminbar', { timeout: 30000 } );
+		await page.waitForLoadState( 'domcontentloaded' );
+	}
 }
 
 async function clearMailpit( api: string ): Promise< void > {
@@ -90,7 +90,9 @@ test.describe.serial( 'SMTP connector', () => {
 			`${ TESTS_URL }/wp-admin/admin.php?page=stampy-settings`
 		);
 
-		await expect( page.locator( 'h1' ) ).toContainText( 'Stampy Settings' );
+		await expect( page.locator( '.wrap h1' ) ).toContainText(
+			'Stampy Settings'
+		);
 
 		await page.fill( '#smtp_host', 'host.docker.internal' );
 		await page.fill( '#smtp_port', '1025' );
@@ -132,7 +134,9 @@ test.describe.serial( 'SMTP connector', () => {
 			`${ TESTS_URL }/wp-admin/admin.php?page=stampy-settings`
 		);
 
-		await expect( page.locator( 'h1' ) ).toContainText( 'Stampy Settings' );
+		await expect( page.locator( '.wrap h1' ) ).toContainText(
+			'Stampy Settings'
+		);
 
 		await page.fill( '#smtp_host', 'host.docker.internal' );
 		await page.fill( '#smtp_port', '1026' );
@@ -191,7 +195,9 @@ test.describe.serial( 'SMTP connector', () => {
 			`${ TESTS_URL }/wp-admin/admin.php?page=stampy-settings`
 		);
 
-		await expect( page.locator( 'h1' ) ).toContainText( 'Stampy Settings' );
+		await expect( page.locator( '.wrap h1' ) ).toContainText(
+			'Stampy Settings'
+		);
 
 		await page.fill( '#smtp_host', 'host.docker.internal' );
 		await page.fill( '#smtp_port', '1026' );

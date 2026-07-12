@@ -3,8 +3,8 @@
  * Spam guard interface.
  *
  * Defines the contract for pluggable spam-guard stages in the signup
- * pipeline. v1 ships honeypot + IP rate-limit; §10 R3/R4 add quiz and
- * third-party guards to the same interface.
+ * pipeline. v1 ships honeypot + IP rate-limit + quiz (Phase 11) +
+ * Cloudflare Turnstile + Friendly Captcha (Phase 12).
  *
  * @package Stampy
  */
