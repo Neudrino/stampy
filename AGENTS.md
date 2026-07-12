@@ -32,6 +32,22 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **PSR-4 subdirectory namespaces**: Classes in `includes/Email/`, `includes/SpamGuards/`, `includes/Validators/`, `includes/Rest/` must use the corresponding sub-namespace (`Stampy\Email`, `Stampy\SpamGuards`, etc.) or Composer's autoloader silently skips them. After adding new subdirectories, run `composer dump-autoload` and watch for "does not comply with psr-4" warnings.
 - **`wp_mail` capture in integration tests**: The test bootstrap has a `wp_mail` filter (`stampy_test_capture_mail`) that captures all sent emails into `$GLOBALS['phpmailer_mock_sent']`. Each entry is `['to' => ..., 'subject' => ..., 'body' => ..., 'headers' => ...]`. Reset with `unset( $GLOBALS['phpmailer_mock_sent'] )` in `setUp()`/`tearDown()`.
 - **PHPCS multi-line `@param` with `{`**: WordPress-style structured docblocks (`@param array<mixed> $request { ... }`) trigger `Squiz.Commenting.FunctionComment.ParamCommentFullStop`. Use a plain `@param` description instead.
+- **WP 7.0 changed autoload option value from `'no'` to `'off'`** — integration tests asserting non-autoloaded option values must use `assertContains($val, ['no', 'off'])` for cross-version compat.
+- **PHPMailer property names are not snake_case** — `$phpmailer->Host`, `$Port`, `$SMTPSecure`, `$SMTPAuth`, `$Username`, `$Password` trigger `WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase`. Wrap in `phpcs:disable` ... `phpcs:enable` blocks.
+- **`hex2bin()` returns `string|false`** — PHPStan flags it. Must check for `false` and provide a fallback before calling `substr()`.
+- **`base64_encode`/`base64_decode` trigger PHPCS warnings** (`WordPress.PHP.DiscouragedPHPFunctions.obfuscation_*`) — wrap in `phpcs:disable`/`phpcs:enable` blocks with a benign-reason comment.
+- **`wp_encrypt_password()` is one-way (bcrypt)** — cannot be used for reversible SMTP password encryption. Use libsodium `crypto_secretbox` instead, keyed from the per-site HMAC secret.
+- **Playwright admin pages with multiple forms**: use `getByRole('button', { name: '...' })` instead of `input[type="submit"]` selectors. WP admin JS can make buttons "not stable"; `click({ force: true })` may be needed. `submit_button()` accepts a third parameter for the button's `name`/`id` attribute: `submit_button(__('Label', 'stampy'), 'primary', 'my-button-id')`.
+- **Dev mu-plugin `wp_mail_from` filter must yield**: the dev mu-plugin's `wp_mail_from` filter at `PHP_INT_MAX` overrides the plugin's own From-email setting. Must check `get_option('stampy_smtp_configured')` and return the input unchanged when the plugin's SMTP is configured.
+- **Mailpit requires TLS for SMTP auth by default** — set `MP_SMTP_AUTH_ALLOW_INSECURE: "true"` env var on the Mailpit container to allow plaintext auth without TLS (needed for local dev/testing without TLS certificates).
+- **Dev mu-plugin must include auth credentials for tests Mailpit** — the tests Mailpit (port 1026) requires auth (`stampy:testpass123`). The dev mu-plugin's `phpmailer_init` hook must set `SMTPAuth=true`, `Username`, and `Password` when `STAMPY_DEV_SMTP_PORT` is 1026, otherwise all `wp_mail()` calls in the tests instance fail silently.
+- **Do not force-disable auth when encryption is `none`** — auth should be independently togglable; forcing it off when encryption=none prevents testing SMTP auth without TLS.
+- **Playwright checkbox on WP admin forms**: `page.check()` can silently fail to register on WP admin checkboxes. Use `page.evaluate()` to set `checkbox.checked = true` directly, then assert with `toBeChecked()` before submitting the form.
+- **E2E tests that modify shared state must be serial**: tests that write to the same WP options (e.g. SMTP settings) must use `test.describe.serial()` to prevent parallel workers from overwriting each other's configuration.
+- **Mailpit STARTTLS requires cert/key files**: set `MP_SMTP_TLS_CERT` and `MP_SMTP_TLS_KEY` env vars (not `MP_SMTP_CERT_FILE`/`MP_SMTP_KEY_FILE`) pointing at PEM files mounted into the container.
+- **PHPMailer self-signed cert rejection**: PHPMailer rejects self-signed TLS certificates by default. Set `SMTPOptions` with `ssl => ['verify_peer' => false, 'verify_peer_name' => false, 'allow_self_signed' => true]`. The plugin exposes a `stampy_smtp_options` filter for dev/test overrides; production uses the default (secure) behavior.
+- **Dev mu-plugin must also set SMTPOptions**: the dev mu-plugin's `phpmailer_init` hook configures PHPMailer directly (not through the plugin's transport), so the `stampy_smtp_options` filter is not applied. The dev mu-plugin must set `SMTPOptions` explicitly when TLS is used.
+- **Dev certs are gitignored**: self-signed TLS certificates under `dev/certs/` are generated locally and must not be committed. The `.gitignore` excludes `/dev/certs/`.
 
 ## Testing
 
@@ -66,15 +82,16 @@ npm run validate           # full: env:start → validate:fast → validate:dock
   - `Validators/` — field-type validator registry (interface, email/text/acceptance validators, singleton registry).
   - `Rest/` — REST API controllers (signup, confirm, unsubscribe, preferences).
   - `Email/` — confirmation email service.
-  - `Admin/` — admin menu, subscribers list table + detail view, lists list table + CRUD. List creation redirects to list overview (not edit view) after save.
+  - `Admin/` — admin menu, subscribers list table + detail view, lists list table + CRUD, SMTP settings page + test-send. List creation redirects to list overview (not edit view) after save.
+  - `Smtp/` — SMTP settings storage (non-autoloaded, libsodium-encrypted passwords) + transport (phpmailer_init + wp_mail_from hooks + `stampy_smtp_options` filter for dev/test SSL overrides).
   - `Security.php` — token generation, SHA-256 hashing, HMAC signing/verification.
   - `SignupService.php` — core opt-in business logic (signup pipeline + confirm pipeline).
   - `Rewrites.php` — virtual endpoint rewrite rules + HTML page rendering.
   - `SignupBlock.php` — server-side registration and rendering for the Stampy Signup block.
 - `src/` — TypeScript/JS (block editor, frontend).
   - `blocks/signup/` — Stampy Signup block (block.json, edit.tsx, save.ts, view.ts, edit.test.tsx).
-- `dev/` — dev-only Mailpit docker-compose, mu-plugin mailer, startup script.
-- `.wp-env.json` — WP 7.0, PHP 8.3, dual instance (dev `:8888`, tests `:8889`), per-instance Mailpit (`:8025`/`:8026`).
+- `dev/` — dev-only Mailpit docker-compose (dual instances with auth + STARTTLS on tests), mu-plugin mailer (yields to plugin SMTP, sets auth creds for tests Mailpit, sets SMTPOptions for self-signed certs), startup script, self-signed TLS certs (`dev/certs/`, gitignored).
+- `.wp-env.json` — WP 7.0, PHP 8.3, dual instance (dev `:8888`, tests `:8889`), per-instance Mailpit (dev `:8025` no auth, tests `:8026` auth+STARTTLS with self-signed cert).
 - `PLAN.md` — full phased implementation plan. `PROGRESS.md` — phase tracking and environment state.
 
 ## Implementation phase workflow
