@@ -54,6 +54,7 @@ function bootstrap(): void {
 	Rest\RestApi::register();
 	Admin\AdminMenu::register();
 	Smtp\SmtpTransport::register();
+	Campaigns\CampaignPostType::register();
 	add_action( 'init', array( SignupBlock::class, 'register' ) );
 
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {

@@ -32,6 +32,7 @@ final class AdminMenu {
 		add_action( 'admin_post_stampy_save_list', array( ListsPage::class, 'handle_save' ) );
 		add_action( 'admin_post_stampy_save_smtp_settings', array( SettingsPage::class, 'handle_save_settings' ) );
 		add_action( 'admin_post_stampy_send_test_email', array( SettingsPage::class, 'handle_send_test' ) );
+		add_action( 'admin_post_stampy_campaign_preview', array( CampaignPreviewPage::class, 'handle_preview' ) );
 	}
 
 	/**
