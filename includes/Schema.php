@@ -40,7 +40,7 @@ class Schema {
 	 * Increment when a table definition changes. The migration runner compares
 	 * this against the stored `stampy_db_version` option.
 	 */
-	public const DB_VERSION = 1;
+	public const DB_VERSION = 2;
 
 	/**
 	 * Get the list of all Stampy table names (prefixed).
@@ -189,6 +189,7 @@ class Schema {
 			campaign_id BIGINT UNSIGNED NOT NULL,
 			subscriber_id BIGINT UNSIGNED NOT NULL,
 			status VARCHAR(20) NOT NULL DEFAULT 'queued',
+			claimed_at DATETIME DEFAULT NULL,
 			sent_at DATETIME DEFAULT NULL,
 			opened_at DATETIME DEFAULT NULL,
 			clicked_at DATETIME DEFAULT NULL,

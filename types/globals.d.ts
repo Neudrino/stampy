@@ -22,6 +22,10 @@ declare global {
 		lists: StampyList[];
 		consentText: string;
 		previewUrl?: string;
+		ajaxUrl?: string;
+		startSendNonce?: string;
+		cancelSendNonce?: string;
+		progressNonce?: string;
 	}
 
 	interface Window {

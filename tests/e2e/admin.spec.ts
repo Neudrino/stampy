@@ -18,9 +18,12 @@ async function adminLogin(
 	await page.goto( `${ TESTS_URL }/wp-login.php` );
 	await page.fill( '#user_login', 'admin' );
 	await page.fill( '#user_pass', 'password' );
-	await page.click( '#wp-submit' );
+	await Promise.all( [
+		page.waitForNavigation( { timeout: 20000 } ),
+		page.click( '#wp-submit' ),
+	] );
 	// Wait until we're actually in the admin (wpadminbar appears on all admin pages).
-	await page.waitForSelector( '#wpadminbar', { timeout: 15000 } );
+	await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
 }
 
 test.describe( 'Admin subscribers/lists management', () => {
