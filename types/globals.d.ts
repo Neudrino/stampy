@@ -21,6 +21,7 @@ declare global {
 		restNonce: string;
 		lists: StampyList[];
 		consentText: string;
+		previewUrl?: string;
 	}
 
 	interface Window {
