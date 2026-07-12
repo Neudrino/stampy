@@ -867,3 +867,141 @@ All 149 tests green: 17 Jest, 26 PHP unit, 115 PHP integration, 13 E2E
 - **Dev certs are gitignored**: self-signed TLS certificates under
   `dev/certs/` are generated locally and must not be committed. The
   `.gitignore` excludes `/dev/certs/`.
+
+---
+
+## Phase 7 — Campaign CPT + Renderer (COMPLETE)
+
+### Requirements fulfilled
+
+- **`stampy_campaign` CPT** (`includes/Campaigns/CampaignPostType.php`):
+  Block-editor-native custom post type with revisions support. Status enum
+  `draft|sending|sent|cancelled` (postmeta). Subject as postmeta. Target
+  list IDs as postmeta (JSON array). Capability type `page` (gated behind
+  `manage_options`). Shows under Stampy admin menu. REST-ready
+  (`show_in_rest=true`, `rest_base=stampy-campaigns`).
+- **Restricted block set**: `allowed_block_types_all` filter restricts the
+  campaign editor to paragraph, heading, image, buttons/button, list/list-item,
+  separator, spacer, columns/column, group.
+- **Email renderer** (`includes/Campaigns/EmailRenderer.php`): Parses
+  `post_content` blocks → table-based email HTML (CSS inlined, 600px wrapper,
+  Arial font family). Plain-text alternative with uppercased headings, `* ` list
+  items, `---` separators, `[text](url)` buttons. Images made absolute.
+  Auto-appends unsubscribe footer (`{unsubscribe_url}` + physical address) when
+  author omits it — send never blocked for missing unsubscribe link.
+- **Campaign preview** (`includes/Admin/CampaignPreviewPage.php`):
+  `admin_post_stampy_campaign_preview` handler outputs rendered HTML or plain
+  text. Linked from the editor sidebar.
+- **Composer TSX sidebar** (`src/campaign-editor/index.tsx`): Plugin sidebar
+  with subject input, list selector (checkboxes from `window.stampy.lists`),
+  status display, and HTML/plain-text preview links. Uses
+  `@wordpress/plugins`, `@wordpress/editor`, `@wordpress/data` (WordPress
+  externals).
+- **Campaign editor script enqueue** (`CampaignPostType::enqueue_editor_assets()`):
+  The sidebar script is enqueued directly via `enqueue_block_editor_assets`
+  (screen-checked to `stampy_campaign` only). It is NOT registered as a
+  block type — a "block" registered via `register_block_type_from_metadata`
+  only enqueues its `editorScript` when the block is present in the post
+  content. Since the sidebar is a JS plugin (never inserted as a block),
+  that approach fails silently. The `block.json` in `src/campaign-editor/`
+  is kept only so `wp-scripts build` auto-discovers the entry point.
+- **Admin menu**: `admin_post_stampy_campaign_preview` handler registered in
+  `AdminMenu::register()`.
+- **Bootstrap**: `Campaigns\CampaignPostType::register()` added to
+  `stampy.php` `bootstrap()`.
+- **Uninstall**: `uninstall.php` deletes all campaign posts + the
+  `stampy_physical_address` option.
+
+### Postmeta keys
+
+- `stampy_campaign_subject` — email subject line (string, default `''`)
+- `stampy_campaign_list_ids` — JSON array of target list IDs (string, default `'[]'`)
+- `stampy_campaign_status` — status enum (string, default `'draft'`)
+
+Note: Meta keys do NOT start with `_`. WordPress treats keys starting with
+`_` as "protected" and does NOT expose them in the REST API `meta` field,
+even when `show_in_rest` is `true`. The block editor saves/loads meta via
+REST, so protected meta is invisible to the editor sidebar.
+
+### Files created/modified
+
+- `includes/Campaigns/CampaignPostType.php` — CPT registration, meta
+  registration, block restriction, editor data localization, meta getters/setters.
+- `includes/Campaigns/EmailRenderer.php` — block-to-email renderer (HTML + text).
+- `includes/Admin/CampaignPreviewPage.php` — preview handler.
+- `includes/Admin/AdminMenu.php` — added `admin_post_stampy_campaign_preview` handler.
+- `src/campaign-editor/index.tsx` — sidebar plugin (subject, lists, status, preview).
+- `src/campaign-editor/block.json` — block metadata for the editor script.
+- `types/globals.d.ts` — added `previewUrl` to `StampyGlobal`.
+- `types/wordpress-plugins.d.ts` — type declarations for `@wordpress/plugins`,
+  `@wordpress/editor`, `@wordpress/data`, `@wordpress/element`.
+- `stampy.php` — added `Campaigns\CampaignPostType::register()` to bootstrap.
+- `uninstall.php` — deletes campaign posts + `stampy_physical_address` option.
+- `tests/phpunit/Integration/CampaignPostTypeTest.php` — 10 tests: CPT
+  registration, visibility, REST, supports, menu parent, subject meta,
+  list_ids meta, status meta, invalid status rejection, meta REST registration.
+- `tests/phpunit/Integration/EmailRendererTest.php` — 20 tests: paragraph HTML,
+  heading HTML, list HTML, separator HTML, button HTML, template wrapper,
+  auto-append footer, footer suppression when unsubscribe present, physical
+  address in footer, plain-text paragraph/heading/list/separator/button,
+  plain-text auto-append unsubscribe, multiple blocks, empty content, subject
+  in title tag, image HTML, relative URL made absolute.
+
+### Test results
+
+All 179 tests green:
+- Jest: 17 (unchanged)
+- PHP unit: 26 (unchanged)
+- PHP integration: 147 (was 115, +32: 10 CPT + 20 renderer + 2 meta fix adjustments)
+- Playwright E2E: 12 (unchanged)
+
+### Gotchas discovered
+
+- **`register_post_meta` default only applies in REST context** —
+  `get_post_meta()` returns `''` for unset meta keys, not the registered
+  default. The `get_status()` method must return `'draft'` when the meta
+  is empty, not rely on the registered default.
+- **Meta keys starting with `_` are invisible to the block editor** —
+  WordPress treats meta keys starting with `_` as "protected" and does NOT
+  expose them in the REST API `meta` field, even when `show_in_rest` is
+  `true`. The block editor saves/loads meta via REST, so protected meta
+  is invisible to the editor sidebar — selections don't persist after
+  save. Fix: use non-underscore-prefixed meta keys (e.g.,
+  `stampy_campaign_subject`, not `_stampy_campaign_subject`).
+- **CPT must support `custom-fields` for REST meta exposure** — even with
+  `show_in_rest=true` on the CPT and `show_in_rest=true` on the registered
+  meta, the REST API does NOT include the `meta` field in the response
+  unless the CPT `supports` array includes `'custom-fields'`. Without it,
+  `editPost({ meta: {...} })` in the block editor silently fails to
+  persist meta changes.
+- **`register_post_meta` with `auth_callback`** — the auth callback
+  restricts meta writes to `manage_options` users. In the integration test
+  context, the meta may not be registered by the time `get_registered_meta_keys`
+  is called if `init` has already fired before the plugin loaded. Fix: call
+  `CampaignPostType::register_meta()` directly in `setUp()` for the CPT test.
+- **`@wordpress/plugins` and `@wordpress/editor` have no native TypeScript
+  types** — hand-written ambient declarations in
+  `types/wordpress-plugins.d.ts` are needed. `useSelect`'s `select`
+  parameter must be typed as an intersection of a callable and a record
+  (`StoreSelectors` interface) for `select('core/editor')` to type-check.
+- **`@wordpress/data` `useSelect` typing** — the `select` function passed to
+  `useSelect` is both callable (`select('core/editor')`) and has properties
+  (`select.getEditedPostAttribute`). Must declare it as an interface with a
+  call signature, not just `Record<string, any>`.
+- **Block JSON `editorScript` for a plugin sidebar** — registering a
+  "block" via `register_block_type_from_metadata` only enqueues its
+  `editorScript` when the block is actually present in the post content.
+  Since the campaign sidebar is a JS plugin (never inserted as a block),
+  this approach fails silently — the script never loads and the sidebar
+  never appears. Fix: enqueue the script directly via
+  `enqueue_block_editor_assets` (screen-checked to the campaign CPT).
+  The `block.json` is kept in `src/campaign-editor/` only so
+  `wp-scripts build` auto-discovers the entry point.
+- **Image block `alt` attribute** — `parse_blocks()` puts the `alt` in
+  `attrs['alt']` only when set via the block attributes panel. When the `alt`
+  is in the `<img>` HTML directly, it must be extracted via regex from
+  `innerHTML` as a fallback.
+- **`parse_blocks()` return type** — PHPStan types it as
+  `array<int|string, array<string, array|string|null>>`, not
+  `array<int, array<string, mixed>>`. Must use `array<int|string, mixed>` in
+  method signatures that accept parsed blocks.

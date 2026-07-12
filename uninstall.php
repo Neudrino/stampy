@@ -13,6 +13,7 @@ declare( strict_types=1 );
 
 use Stampy\Schema;
 use Stampy\Smtp\SmtpSettings;
+use Stampy\Campaigns\CampaignPostType;
 
 // Exit if not called by WordPress during uninstall.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -42,11 +43,26 @@ Schema::uninstall();
 // Remove SMTP settings.
 SmtpSettings::delete_all();
 
+// Delete all campaign posts.
+$stampy_campaigns = get_posts(
+	array(
+		'post_type'   => CampaignPostType::POST_TYPE,
+		'numberposts' => -1,
+		'post_status' => 'any',
+		'fields'      => 'ids',
+		'delete'      => true,
+	)
+);
+foreach ( $stampy_campaigns as $stampy_campaign_id ) {
+	wp_delete_post( (int) $stampy_campaign_id, true );
+}
+
 // Remove plugin options.
 $stampy_options = array(
 	'stampy_db_version',
 	'stampy_delete_data_on_uninstall',
 	'stampy_hmac_secret',
+	'stampy_physical_address',
 );
 
 foreach ( $stampy_options as $stampy_option ) {
