@@ -39,4 +39,6 @@ declare module '@wordpress/element' {
 	export function useState< T >( initial: T ): [ T, ( value: T ) => void ];
 
 	export function useEffect( callback: () => void, deps?: unknown[] ): void;
+
+	export function useRef< T >( initial: T ): { current: T };
 }

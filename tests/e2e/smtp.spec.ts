@@ -26,8 +26,11 @@ async function adminLogin(
 	await page.goto( `${ TESTS_URL }/wp-login.php` );
 	await page.fill( '#user_login', 'admin' );
 	await page.fill( '#user_pass', 'password' );
-	await page.click( '#wp-submit' );
-	await page.waitForSelector( '#wpadminbar', { timeout: 15000 } );
+	await Promise.all( [
+		page.waitForNavigation( { timeout: 20000 } ),
+		page.click( '#wp-submit' ),
+	] );
+	await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
 }
 
 async function clearMailpit( api: string ): Promise< void > {

@@ -14,6 +14,7 @@ declare( strict_types=1 );
 use Stampy\Schema;
 use Stampy\Smtp\SmtpSettings;
 use Stampy\Campaigns\CampaignPostType;
+use Stampy\Tracking\TrackingSettings;
 
 // Exit if not called by WordPress during uninstall.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -43,6 +44,9 @@ Schema::uninstall();
 // Remove SMTP settings.
 SmtpSettings::delete_all();
 
+// Remove tracking settings.
+TrackingSettings::delete();
+
 // Delete all campaign posts.
 $stampy_campaigns = get_posts(
 	array(
@@ -63,6 +67,7 @@ $stampy_options = array(
 	'stampy_delete_data_on_uninstall',
 	'stampy_hmac_secret',
 	'stampy_physical_address',
+	'stampy_tracking_enabled',
 );
 
 foreach ( $stampy_options as $stampy_option ) {
@@ -71,3 +76,8 @@ foreach ( $stampy_options as $stampy_option ) {
 
 // Clear scheduled events.
 wp_clear_scheduled_hook( 'stampy_daily_purge_pending_signups' );
+
+// Unschedule any pending campaign batch actions.
+if ( function_exists( 'as_unschedule_all_actions' ) ) {
+	as_unschedule_all_actions( 'stampy_process_campaign_batch' );
+}

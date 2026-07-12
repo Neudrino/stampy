@@ -17,7 +17,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Stampy\Repositories\CampaignRecipientRepository;
 use Stampy\Repositories\ListRepository;
+use Stampy\Tracking\TrackingSettings;
 use const Stampy\PLUGIN_FILE;
 use const Stampy\VERSION;
 
@@ -74,6 +76,9 @@ final class CampaignPostType {
 		add_action( 'init', array( self::class, 'register_meta' ) );
 		add_filter( 'allowed_block_types_all', array( self::class, 'restrict_block_types' ), 10, 2 );
 		add_action( 'enqueue_block_editor_assets', array( self::class, 'enqueue_editor_assets' ) );
+		add_filter( 'manage_' . self::POST_TYPE . '_posts_columns', array( self::class, 'add_list_columns' ) );
+		add_action( 'manage_' . self::POST_TYPE . '_posts_custom_column', array( self::class, 'render_list_column' ), 10, 2 );
+		add_filter( 'manage_edit-' . self::POST_TYPE . '_sortable_columns', array( self::class, 'sortable_list_columns' ) );
 	}
 
 	/**
@@ -122,9 +127,17 @@ final class CampaignPostType {
 
 		$preview_url = admin_url( 'admin-post.php?action=stampy_campaign_preview' );
 
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$post_id = isset( $_GET['post'] ) ? (int) $_GET['post'] : 0;
+		// phpcs:enable
+
 		$data = array(
-			'lists'      => $lists_formatted,
-			'previewUrl' => $preview_url,
+			'lists'           => $lists_formatted,
+			'previewUrl'      => $preview_url,
+			'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
+			'startSendNonce'  => $post_id > 0 ? wp_create_nonce( 'stampy_start_send_' . $post_id ) : '',
+			'cancelSendNonce' => $post_id > 0 ? wp_create_nonce( 'stampy_cancel_send_' . $post_id ) : '',
+			'progressNonce'   => $post_id > 0 ? wp_create_nonce( 'stampy_progress_' . $post_id ) : '',
 		);
 
 		wp_add_inline_script(
@@ -234,6 +247,41 @@ final class CampaignPostType {
 				'auth_callback' => array( self::class, 'meta_auth_callback' ),
 			)
 		);
+
+		register_post_meta(
+			self::POST_TYPE,
+			TrackingSettings::META_OVERRIDE,
+			array(
+				'type'          => 'string',
+				'single'        => true,
+				'default'       => '',
+				'show_in_rest'  => true,
+				'auth_callback' => array( self::class, 'meta_auth_callback' ),
+			)
+		);
+
+		// Internal meta: HTML/text snapshots, timestamps. Not exposed to REST.
+		$internal_meta = array(
+			SendingEngine::META_HTML_SNAPSHOT,
+			SendingEngine::META_TEXT_SNAPSHOT,
+			SendingEngine::META_SUBJECT_SNAPSHOT,
+			SendingEngine::META_STARTED_AT,
+			SendingEngine::META_COMPLETED_AT,
+		);
+
+		foreach ( $internal_meta as $meta_key ) {
+			register_post_meta(
+				self::POST_TYPE,
+				$meta_key,
+				array(
+					'type'          => 'string',
+					'single'        => true,
+					'default'       => '',
+					'show_in_rest'  => false,
+					'auth_callback' => array( self::class, 'meta_auth_callback' ),
+				)
+			);
+		}
 	}
 
 	/**
@@ -273,6 +321,131 @@ final class CampaignPostType {
 		}
 
 		return $allowed;
+	}
+
+	/**
+	 * Add custom columns to the campaign list table.
+	 *
+	 * @param array<string,string> $columns Existing columns.
+	 * @return array<string,string>
+	 */
+	public static function add_list_columns( array $columns ): array {
+		$new = array();
+
+		foreach ( $columns as $key => $label ) {
+			$new[ $key ] = $label;
+
+			if ( 'title' === $key ) {
+				$new['stampy_status']   = __( 'Status', 'stampy' );
+				$new['stampy_progress'] = __( 'Progress', 'stampy' );
+				$new['stampy_tracking'] = __( 'Tracking', 'stampy' );
+			}
+		}
+
+		return $new;
+	}
+
+	/**
+	 * Render a custom column in the campaign list table.
+	 *
+	 * @param string $column  Column key.
+	 * @param int    $post_id Campaign post ID.
+	 * @return void
+	 */
+	public static function render_list_column( string $column, int $post_id ): void {
+		if ( 'stampy_status' === $column ) {
+			$status = self::get_status( $post_id );
+
+			$badges = array(
+				'draft'     => array( '#dcdcde', '#1d2327' ),
+				'sending'   => array( '#2271b1', '#fff' ),
+				'sent'      => array( '#00a32a', '#fff' ),
+				'cancelled' => array( '#b32d2e', '#fff' ),
+			);
+
+			$badge = $badges[ $status ] ?? $badges['draft'];
+			$label = ucfirst( $status );
+
+			printf(
+				'<span style="background:%s;color:%s;border-radius:3px;padding:2px 8px;font-size:12px;">%s</span>',
+				esc_attr( $badge[0] ),
+				esc_attr( $badge[1] ),
+				esc_html( $label )
+			);
+
+			$subject = self::get_subject( $post_id );
+			if ( '' !== $subject ) {
+				echo '<br><span class="description">' . esc_html( $subject ) . '</span>';
+			}
+		} elseif ( 'stampy_progress' === $column ) {
+			$status = self::get_status( $post_id );
+
+			if ( 'draft' === $status ) {
+				echo '&mdash;';
+			} else {
+				$repo     = new CampaignRecipientRepository();
+				$progress = $repo->get_progress( $post_id );
+
+				if ( $progress['total'] > 0 ) {
+					$percentage = (int) round(
+						( ( $progress['sent'] + $progress['failed'] ) / $progress['total'] ) * 100
+					);
+				} else {
+					$percentage = 0;
+				}
+
+				printf(
+					'%d / %d (%d%%)',
+					(int) ( $progress['sent'] + $progress['failed'] ),
+					(int) $progress['total'],
+					esc_html( (string) $percentage )
+				);
+
+				if ( $progress['failed'] > 0 ) {
+					echo '<br><span style="color:#b32d2e;">' . esc_html(
+						sprintf(
+							/* translators: %d: failed count */
+							__( '%d failed', 'stampy' ),
+							$progress['failed']
+						)
+					) . '</span>';
+				}
+			}
+		} elseif ( 'stampy_tracking' === $column ) {
+			$status  = self::get_status( $post_id );
+			$enabled = TrackingSettings::is_tracking_enabled( $post_id );
+
+			if ( ! $enabled ) {
+				echo '<span style="color:#50575e;">' . esc_html__( 'Off', 'stampy' ) . '</span>';
+			} else {
+				echo '<span style="color:#00a32a;">' . esc_html__( 'On', 'stampy' ) . '</span>';
+
+				if ( 'sent' === $status ) {
+					$repo  = new CampaignRecipientRepository();
+					$stats = $repo->get_stats( $post_id );
+
+					echo '<br><span class="description">' . esc_html(
+						sprintf(
+							/* translators: 1: opens, 2: clicks */
+							__( '%1$d opens, %2$d clicks', 'stampy' ),
+							$stats['opens'],
+							$stats['clicks']
+						)
+					) . '</span>';
+				}
+			}
+		}
+	}
+
+	/**
+	 * Make the status column sortable.
+	 *
+	 * @param array<string,string> $columns Existing sortable columns.
+	 * @return array<string,string>
+	 */
+	public static function sortable_list_columns( array $columns ): array {
+		$columns['stampy_status'] = 'stampy_status';
+		return $columns;
 	}
 
 	/**

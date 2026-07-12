@@ -347,6 +347,13 @@ final class Rewrites {
 	/**
 	 * Render the one-click unsubscribe landing page.
 	 *
+	 * Supports two authentication modes:
+	 * 1. Token-based (subscriber token + HMAC signature) — used by the
+	 *    preference page and token-authenticated unsubscribe links.
+	 * 2. HMAC-only (no subscriber token) — used by RFC 8058 List-Unsubscribe
+	 *    headers in campaign emails, where the raw subscriber token is not
+	 *    available at send time.
+	 *
 	 * @return void
 	 */
 	private static function render_unsubscribe_page(): void {
@@ -355,14 +362,20 @@ final class Rewrites {
 		$token         = (string) get_query_var( self::UNSUB_T_VAR );
 		$sig           = (string) get_query_var( self::UNSUB_SIG_VAR );
 
-		if ( ! Security::verify(
-			array(
-				's'    => $subscriber_id,
-				'list' => $list_id,
-				't'    => $token,
-			),
-			$sig
-		) ) {
+		// Build the params to verify against the signature.
+		$params = array(
+			's' => $subscriber_id,
+		);
+
+		if ( '' !== $token ) {
+			$params['t'] = $token;
+		}
+
+		if ( 0 !== $list_id ) {
+			$params['list'] = $list_id;
+		}
+
+		if ( ! Security::verify( $params, $sig ) ) {
 			self::render_html_page(
 				__( 'Invalid Link', 'stampy' ),
 				__( 'The unsubscribe link is invalid or has expired.', 'stampy' )
@@ -381,18 +394,30 @@ final class Rewrites {
 			return;
 		}
 
-		if ( ! Security::verify_token( $token, (string) $subscriber->unsub_token_hash ) ) {
-			self::render_html_page(
-				__( 'Invalid Token', 'stampy' ),
-				__( 'The token in this link is invalid.', 'stampy' )
-			);
-			return;
+		// If a token is present, verify it against the stored hash.
+		if ( '' !== $token ) {
+			if ( ! Security::verify_token( $token, (string) $subscriber->unsub_token_hash ) ) {
+				self::render_html_page(
+					__( 'Invalid Token', 'stampy' ),
+					__( 'The token in this link is invalid.', 'stampy' )
+				);
+				return;
+			}
 		}
 
 		$list_repo = new Repositories\ListRepository();
-		$list_repo->remove_subscriber( $subscriber_id, $list_id );
 
-		do_action( 'stampy_subscriber_unsubscribed', $subscriber_id, $list_id );
+		if ( 0 !== $list_id ) {
+			$list_repo->remove_subscriber( $subscriber_id, $list_id );
+			do_action( 'stampy_subscriber_unsubscribed', $subscriber_id, $list_id );
+		} else {
+			$member_lists = $list_repo->get_subscriber_lists( $subscriber_id );
+			foreach ( $member_lists as $list ) {
+				$list_repo->remove_subscriber( $subscriber_id, (int) $list->id );
+			}
+			$subscriber_repo->update_status( $subscriber_id, 'unsubscribed' );
+			do_action( 'stampy_subscriber_unsubscribed_all', $subscriber_id );
+		}
 
 		self::render_html_page(
 			__( 'Unsubscribed', 'stampy' ),

@@ -11,6 +11,7 @@ namespace Stampy\Admin;
 
 use Stampy\Smtp\SmtpSettings;
 use Stampy\Smtp\SmtpTransport;
+use Stampy\Tracking\TrackingSettings;
 
 /**
  * Renders the SMTP settings page and handles form submissions.
@@ -117,6 +118,20 @@ final class SettingsPage {
 					</tr>
 				</table>
 
+				<h2><?php esc_html_e( 'Open & Click Tracking', 'stampy' ); ?></h2>
+				<table class="form-table" role="presentation">
+					<tr>
+						<th scope="row"><?php esc_html_e( 'Enable Tracking', 'stampy' ); ?></th>
+						<td>
+							<label>
+								<input type="checkbox" name="tracking_enabled" id="tracking_enabled" value="1" <?php checked( TrackingSettings::is_globally_enabled() ); ?> />
+								<?php esc_html_e( 'Track opens and clicks in campaign emails', 'stampy' ); ?>
+							</label>
+							<p class="description"><?php esc_html_e( 'When enabled, a tracking pixel and click-redirect links are added to campaign emails. Individual campaigns can override this setting. Disabled by default for privacy.', 'stampy' ); ?></p>
+						</td>
+					</tr>
+				</table>
+
 				<?php submit_button( __( 'Save Settings', 'stampy' ) ); ?>
 			</form>
 
@@ -170,6 +185,11 @@ final class SettingsPage {
 		// phpcs:enable
 
 		SmtpSettings::save( $input );
+
+		$tracking_enabled = isset( $_POST['tracking_enabled'] );
+		// phpcs:enable
+
+		TrackingSettings::set_globally_enabled( $tracking_enabled );
 
 		wp_safe_redirect(
 			add_query_arg(

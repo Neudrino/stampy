@@ -126,11 +126,10 @@ final class EmailRenderer {
 	 * @return string
 	 */
 	private function render_paragraph_html( string $inner_html ): string {
-		$text = $this->extract_inner_text( $inner_html );
-		if ( '' === $text ) {
+		$linked = $this->convert_links_to_inline( $inner_html );
+		if ( '' === $linked ) {
 			return '';
 		}
-		$linked = $this->convert_links_to_inline( $text );
 		return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;"><tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#333333;">' . $linked . '</td></tr></table>';
 	}
 
@@ -143,7 +142,6 @@ final class EmailRenderer {
 	private function render_heading_html( string $inner_html ): string {
 		if ( preg_match( '/<h([1-6])[^>]*>/i', $inner_html, $m ) ) {
 			$level  = (int) $m[1];
-			$text   = $this->extract_inner_text( $inner_html );
 			$sizes  = array(
 				1 => '28px',
 				2 => '24px',
@@ -153,7 +151,7 @@ final class EmailRenderer {
 				6 => '14px',
 			);
 			$size   = $sizes[ $level ] ?? '16px';
-			$linked = $this->convert_links_to_inline( $text );
+			$linked = $this->convert_links_to_inline( $inner_html );
 			return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;"><tr><td style="font-family:Arial,Helvetica,sans-serif;font-size:' . $size . ';font-weight:bold;line-height:1.3;color:#222222;">' . $linked . '</td></tr></table>';
 		}
 		return '';
@@ -238,8 +236,7 @@ final class EmailRenderer {
 		foreach ( $inner as $item ) {
 			$item_name = $item['blockName'] ?? '';
 			if ( 'core/list-item' === $item_name ) {
-				$text   = $this->extract_inner_text( $item['innerHTML'] ?? '' );
-				$linked = $this->convert_links_to_inline( $text );
+				$linked = $this->convert_links_to_inline( $item['innerHTML'] ?? '' );
 				$items .= '<li style="font-family:Arial,Helvetica,sans-serif;font-size:16px;line-height:1.6;color:#333333;margin:0 0 4px 0;">' . $linked . '</li>';
 			}
 		}
@@ -451,11 +448,54 @@ final class EmailRenderer {
 	/**
 	 * Convert <a> tags to inline-styled links for email HTML.
 	 *
-	 * @param string $text Already-stripped text (no HTML tags).
-	 * @return string
+	 * Preserves <a> tags with inline styling; strips all other HTML tags.
+	 *
+	 * @param string $html Raw HTML from block innerHTML.
+	 * @return string HTML with inline-styled links.
 	 */
-	private function convert_links_to_inline( string $text ): string {
-		return esc_html( $text );
+	private function convert_links_to_inline( string $html ): string {
+		$placeholders = array();
+
+		$styled = preg_replace_callback(
+			'/<a\s+([^>]*?)>(.*?)<\/a>/is',
+			function ( $m ) use ( &$placeholders ): string {
+				$attrs = $m[1];
+				$text  = $m[2];
+				$href  = '';
+
+				if ( preg_match( '/href=["\']([^"\']*)["\']/i', $attrs, $h ) ) {
+					$href = $h[1];
+				}
+
+				$href       = $this->ensure_absolute_url( $href );
+				$clean_text = wp_strip_all_tags( $text );
+
+				if ( '' === $href ) {
+					return esc_html( $clean_text );
+				}
+
+				$href_attr = 0 === strpos( $href, '{' )
+					? ' href="' . esc_attr( $href ) . '"'
+					: ' href="' . esc_url( $href ) . '"';
+
+				$link = '<a' . $href_attr . ' style="color:#2271b1;text-decoration:underline;">' . esc_html( $clean_text ) . '</a>';
+
+				$placeholder                  = '%%STAMPYLINK' . count( $placeholders ) . '%%';
+				$placeholders[ $placeholder ] = $link;
+
+				return $placeholder;
+			},
+			$html
+		);
+
+		if ( null === $styled ) {
+			return esc_html( wp_strip_all_tags( $html ) );
+		}
+
+		$stripped = wp_strip_all_tags( $styled );
+		$stripped = trim( str_replace( array_keys( $placeholders ), array_values( $placeholders ), $stripped ) );
+
+		return $stripped;
 	}
 
 	/**
@@ -509,6 +549,15 @@ final class EmailRenderer {
 			return $url;
 		}
 		if ( '{unsubscribe_url}' === $url || 0 === strpos( $url, '{' ) ) {
+			return $url;
+		}
+		if ( 0 === strpos( $url, 'mailto:' ) ) {
+			return $url;
+		}
+		if ( 0 === strpos( $url, 'tel:' ) ) {
+			return $url;
+		}
+		if ( 0 === strpos( $url, '#' ) ) {
 			return $url;
 		}
 		return home_url( $url );
