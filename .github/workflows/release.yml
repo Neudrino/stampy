@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build plugin zip
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build
+
+      - name: Install PHP for Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install Composer deps (no-dev, optimized)
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Verify version consistency
+        run: |
+          TAG="${GITHUB_REF#refs/tags/v}"
+          PLUGIN_VERSION=$(grep -oP 'Version:\s+\K\S+' stampy.php)
+          README_VERSION=$(grep -oP 'Stable tag:\s+\K\S+' readme.txt)
+          echo "Tag: $TAG"
+          echo "Plugin header: $PLUGIN_VERSION"
+          echo "readme.txt: $README_VERSION"
+          if [ "$TAG" != "$PLUGIN_VERSION" ]; then
+            echo "ERROR: Git tag ($TAG) does not match plugin header ($PLUGIN_VERSION)"
+            exit 1
+          fi
+          if [ "$TAG" != "$README_VERSION" ]; then
+            echo "ERROR: Git tag ($TAG) does not match readme.txt stable tag ($README_VERSION)"
+            exit 1
+          fi
+
+      - name: Create zip
+        run: |
+          mkdir -p /tmp/stampy
+          rsync -av --exclude-from=.distignore . /tmp/stampy/
+          cd /tmp
+          zip -r stampy-$TAG.zip stampy/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: stampy-${{ github.ref_name }}
+          path: /tmp/stampy-*.zip
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: /tmp/stampy-*.zip
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deploy:
+    name: Deploy to WordPress.org
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: wporg-deploy
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install PHP for Composer
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+
+      - name: Install Composer deps (no-dev, optimized)
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'npm'
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Deploy to WordPress.org SVN
+        uses: 10up/action-wordpress-plugin-deploy@stable
+        with:
+          generate-zip: false
+        env:
+          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
+          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
+          ASSETS_DIR: assets

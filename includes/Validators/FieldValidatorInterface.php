@@ -3,7 +3,7 @@
  * Field validator interface.
  *
  * Defines the contract for pluggable field-type validators. v1 ships
- * `email`, `text`, and `acceptance`; §10 R2 adds the rest.
+ * `email`, `text`, and `acceptance`; Phase 13 adds more, Phase 14 form builder adds the rest.
  *
  * @package Stampy
  */

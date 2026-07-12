@@ -1,0 +1,129 @@
+.stampy-signup-block {
+	max-width: 600px;
+}
+
+.stampy-signup-form .stampy-signup-input,
+.stampy-signup-form .stampy-signup-button {
+	font: inherit;
+	color: inherit;
+}
+
+.stampy-signup-form {
+	display: flex;
+	flex-direction: column;
+	gap: 1rem;
+}
+
+.stampy-signup-form .stampy-signup-field {
+	margin: 0;
+	display: grid;
+	grid-template-columns: 1fr 2fr;
+	align-items: center;
+	gap: 0.75rem;
+}
+
+.stampy-signup-form .stampy-signup-field label {
+	font-weight: 600;
+	line-height: 1.4;
+}
+
+.stampy-signup-form .stampy-signup-field .required {
+	color: #d63638;
+}
+
+.stampy-signup-form .stampy-signup-input {
+	width: 100%;
+	box-sizing: border-box;
+	padding: 0.6rem 0.75rem;
+	border: 1px solid #8c8f94;
+	border-radius: 4px;
+	transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.stampy-signup-form .stampy-signup-input:focus {
+	outline: none;
+	border-color: #2271b1;
+	box-shadow: 0 0 0 1px #2271b1;
+}
+
+.stampy-signup-form .stampy-signup-field input[type="checkbox"] {
+	margin: 0 0.5rem 0 0;
+	vertical-align: middle;
+}
+
+.stampy-signup-form .stampy-signup-field input[type="checkbox"] + * {
+	vertical-align: middle;
+}
+
+.stampy-signup-form .stampy-signup-field:has(input[type="checkbox"]),
+.stampy-signup-form .stampy-signup-field:has(input[type="radio"]) {
+	grid-template-columns: 1fr;
+}
+
+.stampy-signup-form .stampy-signup-field:has(input[type="checkbox"]) label,
+.stampy-signup-form .stampy-signup-field:has(input[type="radio"]) label {
+	font-weight: 400;
+}
+
+.stampy-signup-form .stampy-signup-button {
+	grid-column: 2;
+	justify-self: start;
+	align-self: flex-start;
+	padding: 0.6rem 1.75rem;
+	font-weight: 600;
+	cursor: pointer;
+	border: 1px solid transparent;
+	border-radius: 4px;
+	background-color: #2271b1;
+	color: #fff;
+	transition: background-color 0.15s ease-in-out;
+}
+
+.stampy-signup-form .stampy-signup-button:hover {
+	background-color: #135e96;
+}
+
+.stampy-signup-form .stampy-signup-button:active {
+	background-color: #0a4b78;
+}
+
+.stampy-signup-form .stampy-signup-honeypot {
+	position: absolute;
+	left: -9999px;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+}
+
+.stampy-signup-form .stampy-signup-notice {
+	margin: 0;
+	padding: 0.75rem 1rem;
+	border-radius: 4px;
+	font-size: 0.95rem;
+	line-height: 1.5;
+}
+
+.stampy-signup-form .stampy-signup-success {
+	background-color: #edfaef;
+	border: 1px solid #00a32a;
+	color: #007017;
+}
+
+.stampy-signup-form .stampy-signup-error {
+	margin: 0;
+	font-size: 0.85rem;
+	color: #d63638;
+}
+
+.stampy-signup-form .stampy-signup-error-general {
+	padding: 0.75rem 1rem;
+	border-radius: 4px;
+	background-color: #fcf0f1;
+	border: 1px solid #d63638;
+	font-size: 0.95rem;
+}
+
+.stampy-signup-form .stampy-signup-field-error {
+	grid-column: 2;
+	margin-top: 0.25rem;
+}

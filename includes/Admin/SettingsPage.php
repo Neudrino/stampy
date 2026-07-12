@@ -118,21 +118,43 @@ final class SettingsPage {
 					</tr>
 				</table>
 
-				<h2><?php esc_html_e( 'Open & Click Tracking', 'stampy' ); ?></h2>
-				<table class="form-table" role="presentation">
-					<tr>
-						<th scope="row"><?php esc_html_e( 'Enable Tracking', 'stampy' ); ?></th>
-						<td>
-							<label>
-								<input type="checkbox" name="tracking_enabled" id="tracking_enabled" value="1" <?php checked( TrackingSettings::is_globally_enabled() ); ?> />
-								<?php esc_html_e( 'Track opens and clicks in campaign emails', 'stampy' ); ?>
-							</label>
-							<p class="description"><?php esc_html_e( 'When enabled, a tracking pixel and click-redirect links are added to campaign emails. Individual campaigns can override this setting. Disabled by default for privacy.', 'stampy' ); ?></p>
-						</td>
-					</tr>
-				</table>
+			<h2><?php esc_html_e( 'Open & Click Tracking', 'stampy' ); ?></h2>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Enable Tracking', 'stampy' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="tracking_enabled" id="tracking_enabled" value="1" <?php checked( TrackingSettings::is_globally_enabled() ); ?> />
+							<?php esc_html_e( 'Track opens and clicks in campaign emails', 'stampy' ); ?>
+						</label>
+						<p class="description"><?php esc_html_e( 'When enabled, a tracking pixel and click-redirect links are added to campaign emails. Individual campaigns can override this setting. Disabled by default for privacy.', 'stampy' ); ?></p>
+					</td>
+				</tr>
+			</table>
 
-				<?php submit_button( __( 'Save Settings', 'stampy' ) ); ?>
+			<h2><?php esc_html_e( 'Compliance', 'stampy' ); ?></h2>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><label for="physical_address"><?php esc_html_e( 'Physical Address', 'stampy' ); ?></label></th>
+					<td>
+						<textarea name="physical_address" id="physical_address" rows="3" class="large-text"><?php echo esc_textarea( (string) get_option( 'stampy_physical_address', '' ) ); ?></textarea>
+						<p class="description"><?php esc_html_e( 'Your postal address, included in the footer of every campaign email (CAN-SPAM / GDPR requirement).', 'stampy' ); ?></p>
+					</td>
+				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Data on Uninstall', 'stampy' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="delete_data_on_uninstall" id="delete_data_on_uninstall" value="1" <?php checked( get_option( 'stampy_delete_data_on_uninstall', '1' ), '1' ); ?> />
+							<?php esc_html_e( 'Remove all Stampy data when the plugin is deleted', 'stampy' ); ?>
+						</label>
+						<p class="description"><?php esc_html_e( 'When enabled, deleting the plugin removes all subscribers, lists, campaigns, and settings. Deactivating the plugin preserves data regardless of this setting.', 'stampy' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
+			<?php submit_button( __( 'Save Settings', 'stampy' ) ); ?>
+
 			</form>
 
 			<?php if ( SmtpSettings::is_configured() ) : ?>
@@ -190,6 +212,14 @@ final class SettingsPage {
 		// phpcs:enable
 
 		TrackingSettings::set_globally_enabled( $tracking_enabled );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$physical_address = isset( $_POST['physical_address'] ) ? sanitize_textarea_field( wp_unslash( $_POST['physical_address'] ) ) : '';
+		// phpcs:enable
+		update_option( 'stampy_physical_address', $physical_address, true );
+
+		$delete_on_uninstall = isset( $_POST['delete_data_on_uninstall'] ) ? '1' : '0';
+		update_option( 'stampy_delete_data_on_uninstall', $delete_on_uninstall, true );
 
 		wp_safe_redirect(
 			add_query_arg(
