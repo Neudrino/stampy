@@ -184,7 +184,7 @@ final class SignupBlock {
 					</label>
 				</p>
 
-				<p class="stampy-signup-field stampy-signup-honeypot" aria-hidden="true">
+				<p class="stampy-signup-field stampy-signup-honeypot" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
 					<label>
 						<?php esc_html_e( 'Website', 'stampy' ); ?>
 						<input

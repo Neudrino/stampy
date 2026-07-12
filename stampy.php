@@ -49,16 +49,35 @@ if ( is_readable( $stampy_autoload ) ) {
  * WP-CLI commands.
  */
 function bootstrap(): void {
+	load_action_scheduler();
+
 	Lifecycle::register();
 	Rewrites::register();
 	Rest\RestApi::register();
 	Admin\AdminMenu::register();
 	Smtp\SmtpTransport::register();
 	Campaigns\CampaignPostType::register();
+	Campaigns\SendingEngine::register();
+	Tracking\TrackingEndpoints::register();
 	add_action( 'init', array( SignupBlock::class, 'register' ) );
 
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {
 		\WP_CLI::add_command( 'stampy', Cli::class );
+	}
+}
+
+/**
+ * Load the bundled Action Scheduler library.
+ *
+ * Must be called before the 'plugins_loaded' hook fires so that AS
+ * can register its own initialization hooks.
+ *
+ * @return void
+ */
+function load_action_scheduler(): void {
+	$as_file = __DIR__ . '/vendor/woocommerce/action-scheduler/action-scheduler.php';
+	if ( is_readable( $as_file ) ) {
+		require_once $as_file;
 	}
 }
 

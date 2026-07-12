@@ -1005,3 +1005,441 @@ All 179 tests green:
   `array<int|string, array<string, array|string|null>>`, not
   `array<int, array<string, mixed>>`. Must use `array<int|string, mixed>` in
   method signatures that accept parsed blocks.
+
+## Phase 8 — Sending Engine (COMPLETE)
+
+### Overview
+
+Implemented the full campaign sending pipeline: audience resolution,
+send-start snapshot, Action Scheduler batches, idempotent claiming,
+failure marking, per-recipient personalization via merge-tag registry,
+RFC 8058 one-click unsubscribe headers, and a progress UI.
+
+### Implementation details
+
+- **Action Scheduler** (`woocommerce/action-scheduler ^4.0`) added as a
+  Composer dependency. Loaded in `bootstrap()` via
+  `load_action_scheduler()` which requires the AS plugin file before
+  `plugins_loaded` so AS can register its initialization hooks.
+- **`MergeTagRegistry`** (`includes/Campaigns/MergeTagRegistry.php`) —
+  Replaces `{email}`, `{unsubscribe_url}`, `{first_name}`, `{last_name}`,
+  `{field:*}` merge tags at send time. Also builds RFC 8058
+  `List-Unsubscribe`/`List-Unsubscribe-Post` headers targeting a
+  specific list. Uses HMAC-only authentication for campaign unsubscribe
+  URLs (the raw subscriber token is not available at send time — only
+  its hash is stored). Extensible via `stampy_merge_tags` filter.
+- **`CampaignRecipientRepository`**
+  (`includes/Repositories/CampaignRecipientRepository.php`) — Manages
+  the `campaign_recipients` table. `queue_audience()` resolves confirmed
+  subscribers subscribed to target lists (deduplicated).
+  `claim_batch()` uses conditional `UPDATE … SET status='sending'
+  WHERE id=? AND status='queued'` for idempotent claiming (0 affected =
+  already taken → skip). Re-queues rows stuck in 'sending' longer than
+  `stampy_stuck_send_timeout` (default 15 min) based on `claimed_at`
+  column.
+- **`SendingEngine`** (`includes/Campaigns/SendingEngine.php`) —
+  Orchestrates the full pipeline:
+  1. `start_send()`: validates draft status, resolves audience,
+     snapshots HTML/text/subject from current post_content, sets
+     status='sending', schedules first batch via AS.
+  2. `do_batch()`: claims batch (default 50, `stampy_batch_size`
+     filter), personalizes each email via merge tags, sends via
+     `wp_mail()` with AltBody for multipart/alternative, marks
+     sent/failed, schedules next batch or completes.
+  3. `maybe_complete_send()`: when no queued/sending remain, sets
+     status='sent', records completed_at.
+  4. `cancel_send()`: unschedules AS actions, sets status='cancelled'.
+  5. `run_synchronous()`: for testing — loops `do_batch()` until no
+     queued recipients remain.
+- **Schema** — Added `claimed_at DATETIME` column to
+  `campaign_recipients` table. DB_VERSION bumped to 2.
+- **`Rewrites.php`** — Updated `render_unsubscribe_page()` to support
+  two auth modes: token-based (subscriber token + HMAC) and HMAC-only
+  (for RFC 8058 one-click unsubscribes from campaign emails). Also
+  handles `list_id=0` as global unsubscribe (all lists).
+- **`CampaignSendPage`** (`includes/Admin/CampaignSendPage.php`) —
+  Admin post handler for start/cancel send, AJAX progress poll, and
+  meta box renderer with progress bar. Registered as a side meta box
+  on the campaign edit screen.
+- **`CampaignPostType`** — Registered internal postmeta for
+  HTML/text/subject snapshots + started_at/completed_at timestamps
+  (not exposed to REST).
+- **`EmailRenderer`** — Fixed `convert_links_to_inline()` to preserve
+  `<a>` tags with inline styling in paragraph/heading/list-item blocks
+  (previously stripped all HTML including links, losing `{unsubscribe_url}`
+  in href attributes).
+
+### Postmeta keys (internal, not in REST)
+
+- `stampy_campaign_html_snapshot` — snapshotted HTML body at send start
+- `stampy_campaign_text_snapshot` — snapshotted plain-text body
+- `stampy_campaign_subject_snapshot` — snapshotted subject line
+- `stampy_campaign_started_at` — send-start timestamp (UTC)
+- `stampy_campaign_completed_at` — send-completed timestamp (UTC)
+
+### Files created/modified
+
+- `composer.json` — added `woocommerce/action-scheduler: ^4.0`
+- `includes/Campaigns/MergeTagRegistry.php` — merge-tag registry
+- `includes/Campaigns/SendingEngine.php` — sending engine
+- `includes/Repositories/CampaignRecipientRepository.php` — recipient
+  repository (claiming, progress, audience resolution)
+- `includes/Admin/CampaignSendPage.php` — send/cancel/progress admin
+- `includes/Admin/AdminMenu.php` — registered send handlers + meta box
+- `includes/Campaigns/CampaignPostType.php` — registered snapshot meta
+- `includes/Campaigns/EmailRenderer.php` — fixed link preservation
+- `includes/Rewrites.php` — HMAC-only unsubscribe support
+- `includes/Schema.php` — added `claimed_at` column, DB_VERSION=2
+- `stampy.php` — `load_action_scheduler()` + `SendingEngine::register()`
+- `uninstall.php` — unschedule AS batch actions on uninstall
+- `src/campaign-editor/index.tsx` — status display update
+- `tests/phpunit/Integration/SendingEngineTest.php` — 18 tests: start
+  send, non-draft rejection, no-lists rejection, no-subscribers
+  rejection, full synchronous send, mid-send edit isolation, no-double-
+  send on retry, stuck row re-queue, merge-tag replacement, unsubscribe
+  URL in headers, unsubscribe URL merge tag replaced, auto-appended
+  unsubscribe, audience deduplication, only-confirmed queued, unsubscribed
+  excluded, cancel send, timestamps set, small batch size.
+- `tests/e2e/campaign-send.spec.ts` — E2E: create campaign via WP-CLI,
+  send synchronously, verify personalized emails in Mailpit (no
+  unreplaced merge tags).
+
+### Test results
+
+All 195 tests green:
+- Jest: 17 (unchanged)
+- PHP unit: 3 (unchanged)
+- PHP integration: 165 (was 147, +18: SendingEngine tests)
+- Playwright E2E: 13 (was 12, +1: campaign-send)
+
+### Gotchas discovered
+
+- **Action Scheduler must be loaded before `plugins_loaded`** — AS
+  registers its init callback on `plugins_loaded` at priority 0. The
+  plugin's `bootstrap()` runs at `muplugins_loaded` (via the test
+  bootstrap) or at plugin load time. Calling `require_once` on the AS
+  plugin file in `bootstrap()` ensures AS hooks are registered before
+  `plugins_loaded` fires.
+- **Subscriber token not available at send time** — only the SHA-256
+  hash is stored. The raw token is returned to the caller during
+  confirmation and never persisted. Campaign unsubscribe URLs use
+  HMAC-only authentication (signed with the per-site secret) instead.
+  The `render_unsubscribe_page()` method supports both modes.
+- **`claimed_at` column needed for stuck detection** — without it, the
+  re-queue query would re-queue ALL rows in 'sending' status on every
+  batch, causing immediate re-queue of rows being actively processed.
+  The `claimed_at` timestamp allows re-queuing only rows stuck longer
+  than the timeout.
+- **`wp_strip_all_tags()` strips `<a>` tags** — the EmailRenderer's
+  `convert_links_to_inline()` previously called `extract_inner_text()`
+  first (which strips all HTML), then tried to convert links on plain
+  text — losing all href URLs. Fixed by passing raw HTML to
+  `convert_links_to_inline()` and using a placeholder pattern to
+  preserve `<a>` tags through the stripping process.
+- **E2E tests with shared SMTP state** — the campaign-send E2E test
+  must not conflict with the parallel smtp.spec.ts tests. Solution:
+  delete SMTP settings so the dev mu-plugin routes mail to the tests
+  Mailpit (port 1026) automatically. When SMTP is configured (by the
+  SMTP tests), the dev mu-plugin yields to the plugin's transport.
+- **`SmtpSettings::encrypt_password()` is private** — E2E tests must
+  use `SmtpSettings::save()` (public) to configure SMTP, not call
+  `encrypt_password()` directly.
+- **PHPStan baseline regeneration** — after adding
+  `CampaignRecipientRepository` with table-name interpolation in
+  `$wpdb->prepare()`, run
+  `vendor/bin/phpstan analyse --memory-limit=1G --generate-baseline=phpstan-baseline.neon`
+  to suppress the `literal-string` false positives.
+- **`wp_mail()` AltBody for multipart/alternative** — to send both
+  HTML and plain-text parts, hook `phpmailer_init` and set
+  `$phpmailer->AltBody`. Must `remove_action` after sending to avoid
+  leaking the AltBody to subsequent `wp_mail()` calls.
+- **Schema DB_VERSION bump** — incrementing `DB_VERSION` triggers
+  the migration runner on next load. The `Installer::install()` method
+  uses `CREATE TABLE IF NOT EXISTS` + `dbDelta()` which handles
+  adding new columns to existing tables.
+
+## Phase 9 — Tracking & Stats (COMPLETE)
+
+### Overview
+
+Implemented open/click tracking: 1×1 pixel for opens, signed redirect
+endpoint for clicks, global toggle (default OFF) with per-campaign
+override, and stats UI. All tracking URLs are HMAC-signed to prevent
+tampering (e.g. swapping the destination URL in a click link).
+
+### Implementation details
+
+- **`TrackingSettings`** (`includes/Tracking/TrackingSettings.php`) —
+  Global tracking toggle option (`stampy_tracking_enabled`, default
+  `'0'` = OFF). Per-campaign override meta
+  (`stampy_campaign_tracking`: `''` = inherit, `'on'` = force enable,
+  `'off'` = force disable). `is_tracking_enabled(campaign_id)`
+  resolves the effective setting.
+- **`Tracking`** (`includes/Tracking/Tracking.php`) — Builds signed
+  tracking URLs (open pixel + click redirect), injects the 1×1
+  transparent GIF pixel into HTML bodies, rewrites content links with
+  click-tracking redirects. Excludes from click rewriting:
+  `{unsubscribe_url}` placeholders, URLs containing `stampy_unsub`,
+  `mailto:`, `tel:`, in-page anchors (`#...`), and URL-encoded
+  placeholders (`%7B...%7D`).
+- **`TrackingEndpoints`** (`includes/Tracking/TrackingEndpoints.php`)
+  — Registers query vars and rewrite rules for `/stampy/open/...` and
+  `/stampy/click/...`. `handle_requests()` on `template_redirect`
+  verifies HMAC signatures, records events, serves the 1×1 GIF (opens)
+  or 302-redirects (clicks). `process_open()` and `process_click()`
+  are public testable methods separated from the exit-calling handlers.
+- **`CampaignRecipientRepository`** — Added `mark_opened()` (idempotent:
+  only sets `opened_at` if NULL), `mark_clicked()` (idempotent),
+  `record_click()` (inserts into `campaign_clicks`), `get_stats()`
+  (opens, unique clicks, total clicks), `get_click_summary()` (per-URL
+  click counts).
+- **`SendingEngine`** — When `TrackingSettings::is_tracking_enabled()`
+  is true, applies `rewrite_click_links()` then `inject_open_pixel()`
+  to the personalized HTML after merge-tag replacement.
+- **`CampaignPostType`** — Registered `stampy_campaign_tracking` meta
+  (REST-exposed for block-editor sidebar control).
+- **`SettingsPage`** — Added "Open & Click Tracking" section with a
+  checkbox for the global toggle, saved alongside SMTP settings.
+- **`CampaignSendPage`** — Added tracking stats display (opens, open
+  rate, unique clicks, total clicks) in the send meta box when campaign
+  status is `sent`.
+- **`campaign-editor/index.tsx`** — Added "Open & Click Tracking"
+  panel with a SelectControl for the per-campaign override (inherit /
+  enable / disable).
+- **`uninstall.php`** — Removes the `stampy_tracking_enabled` option.
+
+### Files created/modified
+
+- `includes/Tracking/TrackingSettings.php` — settings storage
+- `includes/Tracking/Tracking.php` — pixel + link rewriting
+- `includes/Tracking/TrackingEndpoints.php` — endpoints
+- `includes/Repositories/CampaignRecipientRepository.php` — stats methods
+- `includes/Campaigns/SendingEngine.php` — tracking instrumentation
+- `includes/Campaigns/CampaignPostType.php` — tracking meta registration
+- `includes/Campaigns/EmailRenderer.php` — fixed `esc_url()` stripping
+  `{` from placeholder URLs; fixed `ensure_absolute_url()` to preserve
+  `mailto:`, `tel:`, and `#` URLs; changed link placeholder to
+  `%%STAMPYLINKn%%` (null bytes were stripped by `trim()`)
+- `includes/Admin/SettingsPage.php` — tracking toggle UI
+- `includes/Admin/CampaignSendPage.php` — stats display
+- `src/campaign-editor/index.tsx` — tracking override control
+- `stampy.php` — `Tracking\TrackingEndpoints::register()`
+- `uninstall.php` — remove tracking option
+- `phpstan-baseline.neon` — regenerated (66 errors, all `literal-string`)
+- `tests/phpunit/Integration/TrackingTest.php` — 16 tests
+- `tests/e2e/tracking.spec.ts` — E2E: pixel + click tracking
+
+### Test results
+
+All 210 tests green:
+- Jest: 17 (unchanged)
+- PHP unit: 3 (unchanged)
+- PHP integration: 181 (was 165, +16: TrackingTest)
+- Playwright E2E: 14 (was 13, +1: tracking.spec.ts)
+
+## Campaign Admin UI Refactor — Unified PluginSidebar (COMPLETE)
+
+### Overview
+
+Replaced the PHP meta box + inline JavaScript campaign send UI with a
+unified React `PluginSidebar` component. All campaign management
+(subject, target lists, tracking, send/progress/stats, preview) now
+lives in a single sidebar panel with auto-save via `editPost()` and
+AJAX-based send/cancel/progress polling.
+
+### What was removed
+
+- `CampaignSendPage::render_send_box()` — PHP meta box HTML rendering
+- `CampaignSendPage::enqueue_scripts()` — inline JavaScript for send/
+  cancel/progress (replaced by React state + `fetch()`)
+- `AdminMenu::add_campaign_meta_boxes()` — meta box registration hook
+- `AdminMenu::admin_footer()` — inline script for progress polling
+- `CampaignPostType` import from `AdminMenu` (no longer needed)
+
+### What was added/updated
+
+- **`src/campaign-editor/index.tsx`** — fully rewritten. All campaign UI
+  in one `PluginSidebar`:
+  - **Subject** — `TextControl`, auto-saves via `editPost({ meta: {...} })`
+    on every keystroke
+  - **Target Lists** — `CheckboxControl` list, auto-saves on toggle
+  - **Open & Click Tracking** — `SelectControl` for per-campaign
+    override (inherit / enable / disable), auto-saves on change
+  - **Send & Progress** — Send/Cancel `Button`s via `fetch()` to
+    `admin-ajax.php`; live progress bar with 3s polling (`useRef` for
+    interval); tracking stats (opens, open rate, unique clicks, total
+    clicks) shown when sent
+  - **Preview** — HTML and plain-text preview links
+- **`CampaignPostType::enqueue_editor_assets()`** — now passes
+  `ajaxUrl`, `startSendNonce`, `cancelSendNonce`, `progressNonce` to
+  JS via `window.stampy`
+- **`CampaignSendPage::handle_progress_ajax()`** — now includes
+  tracking stats when campaign status is `sent`
+- **`AdminMenu`** — removed meta box hooks; kept `post_row_actions`
+  filter + AJAX handler registrations
+- **`types/globals.d.ts`** — added `ajaxUrl`, `startSendNonce`,
+  `cancelSendNonce`, `progressNonce` to `StampyGlobal`
+- **`types/wordpress-plugins.d.ts`** — added `useRef` export to
+  `@wordpress/element` module declaration
+- **`tests/jest/mocks/components.js`** — added `TextControl`,
+  `SelectControl`, `Button`, `Spinner`
+- **`tests/jest/mocks/i18n.js`** — added `sprintf`
+- **`tests/jest/mocks/plugins.js`** — new mock for `@wordpress/plugins`
+  (`registerPlugin` stub)
+- **`tests/jest/mocks/editor.js`** — new mock for `@wordpress/editor`
+  (`PluginSidebar` stub)
+- **`jest.config.js`** — added `@wordpress/plugins` and
+  `@wordpress/editor` to `moduleNameMapper`
+
+### Files created/modified
+
+- `src/campaign-editor/index.tsx` — fully rewritten unified sidebar
+- `src/campaign-editor/index.test.tsx` — 7 Jest tests (new)
+- `includes/Admin/CampaignSendPage.php` — removed PHP meta box; AJAX
+  handlers retained
+- `includes/Admin/AdminMenu.php` — removed meta box hooks
+- `includes/Campaigns/CampaignPostType.php` — `enqueue_editor_assets()`
+  passes nonces + AJAX URL
+- `types/globals.d.ts` — StampyGlobal additions
+- `types/wordpress-plugins.d.ts` — `useRef` addition
+- `tests/jest/mocks/components.js` — new component stubs
+- `tests/jest/mocks/i18n.js` — `sprintf` added
+- `tests/jest/mocks/plugins.js` — new mock file
+- `tests/jest/mocks/editor.js` — new mock file
+- `jest.config.js` — new module mappings
+- `tests/e2e/campaign-admin-ui.spec.ts` — 3 E2E tests (new)
+
+### Test results
+
+All 223 tests green:
+- Jest: 24 (was 17, +7: `index.test.tsx`)
+- PHP unit: 3 (unchanged)
+- PHP integration: 181 (unchanged)
+- Playwright E2E: 15 (was 14, +1: `campaign-admin-ui.spec.ts`)
+
+### Gotchas discovered
+
+- **TypeScript generics in `.tsx` files are parsed as JSX** —
+  `jest.mock('@wordpress/element', () => ({ useState: <T>(...) => ... }))`
+  causes `tsc --noEmit` to fail with "JSX element 'T' has no closing
+  tag." Jest (babel) handles it fine, but `validate:fast` includes
+  `type-check`. Fix: use `unknown` instead of generics, or move the
+  mock to a `.js` file. Using `unknown` is simplest: `useState:
+  (initial: unknown) => { ... }`.
+- **`useSelect` mock return objects need `Record<string, any>` type**
+  — TypeScript complains "No index signature with a parameter of type
+  'string'" when indexing a plain object literal with a `string` store
+  name. Fix: type the mock `select` object as `Record<string, any>`.
+- **PHP meta boxes inside the post edit form cannot use nested
+  `<form>` tags** — browsers ignore inner forms. The PHP meta box had
+  a `<form>` for send/cancel that conflicted with the WP post edit
+  form. Moving everything to React `PluginSidebar` with AJAX `fetch()`
+  calls eliminates the nested form problem entirely.
+- **`wp_print_inline_script_tag()` during `admin_enqueue_scripts`
+  outputs in `<head>` before DOM exists** — use `admin_footer` hook
+  instead, or better, move all interactivity to React.
+- **PluginSidebar is opened via a button in the editor top bar** (e.g.
+  "Campaign Settings" icon), NOT via the sidebar tab list (which shows
+  "Campaign"/"Block" tabs for the built-in post sidebar).
+- **E2E tests for React sidebar components** — use
+  `getByRole('button', { name: '...' })` to find sidebar buttons.
+  `page.click('button')` is too generic. The sidebar renders
+  asynchronously; use `waitForSelector` or `expect(...).toBeVisible()`
+  with a timeout.
+
+### Gotchas discovered
+
+- **`esc_url()` strips `{` and `}` from merge-tag placeholders** —
+  `esc_url( '{unsubscribe_url}' )` returns `http://unsubscribe_url`
+  (curly braces removed). The link rewriter then sees a plain URL
+  instead of a placeholder. Fix: in `convert_links_to_inline()`, use
+  `esc_attr()` for hrefs starting with `{`, `esc_url()` otherwise.
+- **`wp_strip_all_tags()` + `trim()` strips null bytes** — the old
+  `\x00LINKn\x00` placeholder pattern was stripped by `trim()` inside
+  `wp_strip_all_tags()`, breaking link restoration. Changed to
+  `%%STAMPYLINKn%%` which survives the stripping.
+- **`ensure_absolute_url()` must preserve `mailto:`, `tel:`, and
+  `#` URLs** — otherwise these are prefixed with `home_url()`, breaking
+  them (e.g. `mailto:info@example.com` →
+  `http://localhost:8889/mailto:info@example.com`).
+- **HTML entity encoding in tracking URLs** — `esc_url()` encodes `&`
+  as `&#038;` in the pixel URL. E2E tests extracting URLs from email
+  HTML must decode both `&amp;` and `&#038;` before making HTTP
+  requests.
+- **Rewrite rules must be flushed after adding new endpoints** — the
+  tracking rewrite rules are registered on `init` but only become
+  active after `flush_rewrite_rules()`. In the tests instance, run
+  `wp rewrite flush` after activating the plugin.
+- **`should_exclude_link()` must check for URL-encoded placeholders**
+  — `esc_url()` in the EmailRenderer can encode `{unsubscribe_url}` to
+  `%7Bunsubscribe_url%7D` in some code paths. The link rewriter must
+  exclude hrefs starting with `%7B` (case-insensitive) as well as `{`.
+- **`base64_decode` triggers PHPCS warning** — the 1×1 GIF pixel is
+  a fixed base64-encoded string. Wrap in
+  `phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_decode`
+  ... `phpcs:enable` with a benign-reason comment.
+
+## Post-Phase-9 Fixes
+
+### Campaign list table columns
+
+Added three custom columns to the campaign list table
+(`includes/Campaigns/CampaignPostType.php`):
+
+- **Status** — colored badge (draft=grey, sending=blue, sent=green,
+  cancelled=red) + subject line underneath
+- **Progress** — `sent / total (XX%)` with failed count in red if any
+  failures; `—` for drafts
+- **Tracking** — On/Off indicator + opens/clicks summary when sent
+
+### Campaign sidebar — all panels expanded
+
+Changed the Preview `PanelBody` `initialOpen` from `false` to `true`
+in `src/campaign-editor/index.tsx`. All panels (Subject, Target
+Lists, Open & Click Tracking, Send & Progress, Preview) now open by
+default.
+
+### CI E2E — missing `npm run build` step
+
+The CI E2E job was missing `npm run build` before running tests. The
+`build/` directory is gitignored, so the compiled campaign-editor JS
+(with `registerPlugin`) never existed in CI. The "Campaign Settings"
+button couldn't appear without it, causing the "sidebar Send button
+starts the campaign send via AJAX" test to fail with a timeout
+waiting for the button. Fix: added `npm run build` step in
+`.github/workflows/ci.yml` before `npx playwright install`.
+
+### E2E admin login robustness
+
+Updated all 3 `adminLogin` helpers (`admin.spec.ts`,
+`campaign-admin-ui.spec.ts`, `smtp.spec.ts`) to use
+`Promise.all([waitForNavigation, click])` instead of bare `click`,
+and increased timeouts from 15s to 20s. This eliminates the flaky
+`#wpadminbar` timeout that occurred when the login redirect was slow.
+
+Also added `expect(settingsButton).toBeVisible({ timeout: 20000 })`
+before clicking the "Campaign Settings" button in
+`campaign-admin-ui.spec.ts`, to give the block editor time to fully
+load.
+
+### Honeypot field visible on frontend
+
+The server-side rendered honeypot field in `SignupBlock.php` was
+only hidden via `aria-hidden="true"`, which hides it from screen
+readers but not visually. The block editor preview (`edit.tsx`)
+already hid it with inline CSS (`position:absolute;
+left:-9999px;width:1px;height:1px;overflow:hidden;`), but the PHP
+render path did not. Fix: added the same inline CSS to the
+`<p>` wrapper in `SignupBlock.php`.
+
+### Files modified
+
+- `includes/Campaigns/CampaignPostType.php` — list table columns
+  (Status, Progress, Tracking)
+- `src/campaign-editor/index.tsx` — Preview panel `initialOpen={true}`
+- `.github/workflows/ci.yml` — added `npm run build` in E2E job
+- `tests/e2e/admin.spec.ts` — robust admin login
+- `tests/e2e/campaign-admin-ui.spec.ts` — robust admin login + button
+  visibility wait
+- `tests/e2e/smtp.spec.ts` — robust admin login
+- `includes/SignupBlock.php` — honeypot field hidden with inline CSS
