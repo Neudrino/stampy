@@ -53,6 +53,7 @@ function bootstrap(): void {
 	Rewrites::register();
 	Rest\RestApi::register();
 	Admin\AdminMenu::register();
+	Smtp\SmtpTransport::register();
 	add_action( 'init', array( SignupBlock::class, 'register' ) );
 
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {
