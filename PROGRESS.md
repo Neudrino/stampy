@@ -739,3 +739,131 @@ Status: **COMPLETE** ✓
   by replacing `waitForLoadState('networkidle')` with
   `waitForSelector('#wpadminbar', { timeout: 15000 })` — the admin bar
   appears on all WP admin pages and reliably indicates a successful login.
+
+---
+
+## Phase 6 — SMTP Connector (COMPLETE)
+
+### Requirements fulfilled
+
+- **SMTP settings storage** (`includes/Smtp/SmtpSettings.php`): host, port,
+  encryption (none/ssl/tls), auth toggle, username, password, From-email,
+  From-name. Stored in non-autoloaded options (`stampy_smtp_settings`).
+  Defaults: port 587, encryption tls, From-email = admin_email, From-name =
+  blogname.
+- **Password encryption**: SMTP passwords are encrypted at rest using
+  libsodium `crypto_secretbox` (XSalsa20-Poly1305), keyed from the per-site
+  HMAC secret. Encrypted values are prefixed with `enc:` and stored as
+  base64(nonce + ciphertext). Decryption is on-demand only.
+- **SMTP transport** (`includes/Smtp/SmtpTransport.php`): hooks
+  `phpmailer_init` to configure PHPMailer (isSMTP, Host, Port, SMTPSecure,
+  SMTPAuth, Username, Password). Hooks `wp_mail_from` and `wp_mail_from_name`
+  to apply configured From address/name. All hooks are no-ops when SMTP is
+  not configured (host empty).
+- **Settings admin page** (`includes/Admin/SettingsPage.php`): settings form
+  with all SMTP fields + From address/name. "Send Test Email" form appears
+  only when SMTP is configured. Both forms use `admin_post` handlers with
+  nonce + `manage_options` capability checks.
+- **Settings sub-menu** added to Stampy admin menu.
+- **`stampy_smtp_configured` option**: set to `'1'` when host is non-empty,
+  deleted when host is cleared. The dev mu-plugin checks this option to
+  yield its own Mailpit routing when the plugin's SMTP is configured.
+- **Uninstall cleanup**: `SmtpSettings::delete_all()` called from
+  `uninstall.php`.
+- **`SmtpTransport::register()`** called from `stampy.php` bootstrap.
+
+### Tests
+
+- **Integration** (`tests/phpunit/Integration/SmtpSettingsTest.php`): 21 tests
+  covering defaults, save/configured flag, password encryption round-trip,
+  keep-existing-password-on-blank, disabling auth clears credentials, invalid
+  encryption/port fallbacks, From email/name defaults, non-autoloaded option
+  verification, `configure_phpmailer()` property setting (host/port/secure/
+  auth/username/password), noop when not configured, no-encryption mode,
+  From filters, admin_post save handler, capability/nonce checks, send_test
+  failure when not configured.
+- **E2E** (`tests/e2e/smtp.spec.ts`): 3 tests (serial):
+  1. No-auth: configures SMTP without auth against dev Mailpit (port 1025),
+     sends a test email, verifies delivery via dev Mailpit API (:8025).
+  2. Auth (no encryption): configures SMTP with auth (`stampy:testpass123`)
+     and encryption=none against tests Mailpit (port 1026), sends a test
+     email, verifies delivery via tests Mailpit API (:8026). Proves
+     credentials are correctly passed to the SMTP server.
+  3. Auth + TLS: configures SMTP with auth and TLS encryption against
+     tests Mailpit (port 1026, STARTTLS with self-signed cert), sends a
+     test email, verifies delivery. Proves STARTTLS encryption works
+     end-to-end with a self-signed certificate.
+
+### Test results
+
+All 149 tests green: 17 Jest, 26 PHP unit, 115 PHP integration, 13 E2E
+(10 previous + 3 new SMTP tests: no-auth, auth, auth+TLS).
+
+### Gotchas discovered
+
+- **WP 7.0 changed autoload option value from `'no'` to `'off'`** —
+  integration tests asserting `autoload === 'no'` for non-autoloaded options
+  must use `assertContains($val, ['no', 'off'])` for cross-version compat.
+- **PHPMailer property names are not snake_case** — `$phpmailer->Host`,
+  `$Port`, `$SMTPSecure`, `$SMTPAuth`, `$Username`, `$Password` trigger
+  `WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase`.
+  Wrap in `phpcs:disable` ... `phpcs:enable` blocks.
+- **`hex2bin()` returns `string|false`** — PHPStan flags it. Must check for
+  `false` and provide a fallback before calling `substr()`.
+- **`base64_encode`/`base64_decode` trigger PHPCS warnings**
+  (`WordPress.PHP.DiscouragedPHPFunctions.obfuscation_*`) — wrap in
+  `phpcs:disable`/`phpcs:enable` blocks with a benign-reason comment.
+- **Playwright `submit_button()` with ID**: `submit_button()` accepts a
+  third parameter for the button's `name`/`id` attribute. Using
+  `submit_button(__('Send Test Email', 'stampy'), 'primary', 'stampy-send-test')`
+  gives the button an ID for reliable E2E targeting.
+- **Playwright button stability**: admin pages with multiple forms can have
+  buttons that Playwright considers "not stable" (likely due to WP admin
+  JS re-rendering). Using `click({ force: true })` or
+  `getByRole('button', { name: '...' })` is more reliable than
+  `input[type="submit"]` selectors when multiple submit buttons exist.
+- **Dev mu-plugin `wp_mail_from` filter must yield**: the dev mu-plugin's
+  `wp_mail_from` filter at `PHP_INT_MAX` would override the plugin's own
+  From-email setting. Must check `get_option('stampy_smtp_configured')` and
+  return the input unchanged when the plugin's SMTP is configured.
+- **`wp_encrypt_password()` is one-way (bcrypt)** — cannot be used for
+  reversible SMTP password encryption. Use libsodium `crypto_secretbox`
+  instead, keyed from the per-site HMAC secret.
+- **Mailpit requires TLS for SMTP auth by default** — set
+  `MP_SMTP_AUTH_ALLOW_INSECURE: "true"` env var on the Mailpit container to
+  allow plaintext auth without TLS (needed for local dev/testing without
+  TLS certificates).
+- **Dev mu-plugin must include auth credentials for tests Mailpit** — the
+  tests Mailpit (port 1026) now requires auth (`stampy:testpass123`). The
+  dev mu-plugin's `phpmailer_init` hook must set `SMTPAuth=true`,
+  `Username`, and `Password` when `STAMPY_DEV_SMTP_PORT` is 1026, otherwise
+  all `wp_mail()` calls in the tests instance (e.g. confirmation emails in
+  the signup E2E test) fail silently.
+- **Do not force-disable auth when encryption is `none`** — the initial
+  implementation forcibly cleared `auth` when `encryption=none`, but this
+  prevents testing SMTP auth without TLS (e.g., against Mailpit with
+  `MP_SMTP_AUTH_ALLOW_INSECURE`). Auth should be independently togglable.
+- **Playwright checkbox on WP admin forms**: `page.check()` can silently
+  fail to register on WP admin checkboxes. Use `page.evaluate()` to set
+  `checkbox.checked = true` directly, then assert with `toBeChecked()`
+  before submitting the form.
+- **E2E tests that modify shared state must be serial**: SMTP settings tests
+  that write to the same WP options must use `test.describe.serial()` to
+  prevent parallel workers from overwriting each other's configuration.
+- **Mailpit STARTTLS requires cert/key files**: set `MP_SMTP_TLS_CERT` and
+  `MP_SMTP_TLS_KEY` env vars (not `MP_SMTP_CERT_FILE`/`MP_SMTP_KEY_FILE`)
+  pointing at PEM files mounted into the container. The log should say
+  "STARTTLS optional" or "STARTTLS required", not "no encryption".
+- **PHPMailer self-signed cert rejection**: PHPMailer rejects self-signed
+  TLS certificates by default. The `SMTPOptions` property must be set with
+  `ssl => ['verify_peer' => false, 'verify_peer_name' => false,
+  'allow_self_signed' => true]`. The plugin exposes a `stampy_smtp_options`
+  filter so dev/test environments can override SSL verification settings;
+  production uses the default (secure) behavior.
+- **Dev mu-plugin must also set SMTPOptions**: the dev mu-plugin's
+  `phpmailer_init` hook configures PHPMailer directly (not through the
+  plugin's transport), so the `stampy_smtp_options` filter is not applied.
+  The dev mu-plugin must set `SMTPOptions` explicitly when TLS is used.
+- **Dev certs are gitignored**: self-signed TLS certificates under
+  `dev/certs/` are generated locally and must not be committed. The
+  `.gitignore` excludes `/dev/certs/`.
