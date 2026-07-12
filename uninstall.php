@@ -12,6 +12,7 @@
 declare( strict_types=1 );
 
 use Stampy\Schema;
+use Stampy\Smtp\SmtpSettings;
 
 // Exit if not called by WordPress during uninstall.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -37,6 +38,9 @@ if ( '1' !== $stampy_delete_data ) {
 
 // Drop all custom tables.
 Schema::uninstall();
+
+// Remove SMTP settings.
+SmtpSettings::delete_all();
 
 // Remove plugin options.
 $stampy_options = array(
