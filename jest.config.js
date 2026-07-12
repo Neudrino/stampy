@@ -5,6 +5,8 @@ const moduleMocks = {
 	'@wordpress/components': '<rootDir>/tests/jest/mocks/components.js',
 	'@wordpress/i18n': '<rootDir>/tests/jest/mocks/i18n.js',
 	'@wordpress/api-fetch': '<rootDir>/tests/jest/mocks/api-fetch.js',
+	'@wordpress/plugins': '<rootDir>/tests/jest/mocks/plugins.js',
+	'@wordpress/editor': '<rootDir>/tests/jest/mocks/editor.js',
 };
 
 module.exports = {
