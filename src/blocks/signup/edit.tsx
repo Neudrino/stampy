@@ -122,6 +122,7 @@ export default function Edit( {
 								type="text"
 								id="stampy-first-name"
 								name="first_name"
+								className="stampy-signup-input"
 							/>
 						</p>
 					) }
@@ -134,6 +135,7 @@ export default function Edit( {
 								type="text"
 								id="stampy-last-name"
 								name="last_name"
+								className="stampy-signup-input"
 							/>
 						</p>
 					) }
@@ -148,6 +150,7 @@ export default function Edit( {
 							type="email"
 							id="stampy-email"
 							name="email"
+							className="stampy-signup-input"
 							required
 							aria-required="true"
 						/>
@@ -167,18 +170,17 @@ export default function Edit( {
 							</span>
 						</label>
 					</p>
-					<p className="stampy-signup-field">
+					<p
+						className="stampy-signup-field stampy-signup-honeypot"
+						aria-hidden="true"
+					>
+						<label htmlFor="stampy-website-check">
+							{ __( 'Website', 'stampy' ) }
+						</label>
 						<input
 							type="text"
+							id="stampy-website-check"
 							name="website_check"
-							style={ {
-								position: 'absolute',
-								left: '-9999px',
-								width: 1,
-								height: 1,
-								overflow: 'hidden',
-							} }
-							aria-hidden="true"
 							tabIndex={ -1 }
 							autoComplete="off"
 						/>

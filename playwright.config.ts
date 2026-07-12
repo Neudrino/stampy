@@ -27,5 +27,6 @@ export default defineConfig( {
 		trace: 'on-first-retry',
 		screenshot: 'only-on-failure',
 		video: 'off',
+		storageState: 'tests/e2e/.auth/admin.json',
 	},
 } );

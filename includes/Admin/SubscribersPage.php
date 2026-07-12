@@ -75,13 +75,21 @@ final class SubscribersPage {
 		$search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
 		$status = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '';
 		// phpcs:enable
+
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$bulk_done = isset( $_GET['stampy_bulk_done'] ) ? sanitize_text_field( wp_unslash( $_GET['stampy_bulk_done'] ) ) : '';
+		$bulk_msg  = isset( $_GET['stampy_bulk_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['stampy_bulk_msg'] ) ) : '';
+		// phpcs:enable
 		?>
 		<div class="wrap">
+			<?php if ( '1' === $bulk_done && '' !== $bulk_msg ) : ?>
+				<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $bulk_msg ); ?></p></div>
+			<?php endif; ?>
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Subscribers', 'stampy' ); ?></h1>
-			<form method="get">
-				<input type="hidden" name="page" value="stampy-subscribers" />
-				<?php $table->search_box( __( 'Search subscribers', 'stampy' ), 'subscriber' ); ?>
-				<?php $table->display(); ?>
+		<form method="post">
+			<input type="hidden" name="page" value="stampy-subscribers" />
+			<?php $table->search_box( __( 'Search subscribers', 'stampy' ), 'subscriber' ); ?>
+			<?php $table->display(); ?>
 			</form>
 		</div>
 		<?php

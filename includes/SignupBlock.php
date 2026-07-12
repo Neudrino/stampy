@@ -35,6 +35,9 @@ final class SignupBlock {
 			)
 		);
 
+		wp_set_script_translations( 'stampy-signup-editor-script', 'stampy', plugin_dir_path( PLUGIN_FILE ) . 'languages' );
+		wp_set_script_translations( 'stampy-signup-view-script', 'stampy', plugin_dir_path( PLUGIN_FILE ) . 'languages' );
+
 		add_action( 'enqueue_block_editor_assets', array( self::class, 'localize_editor_data' ) );
 		add_action( 'wp_enqueue_scripts', array( self::class, 'localize_view_data' ) );
 	}

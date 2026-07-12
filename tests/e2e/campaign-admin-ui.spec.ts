@@ -14,27 +14,41 @@ import { execSync } from 'child_process';
 const TESTS_URL = 'http://localhost:8889';
 
 function wpCli( command: string ): string {
-	return execSync(
-		`WP_ENV_HOME=./.wp-env-home npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy ${ command }`,
-		{
-			encoding: 'utf-8',
-			timeout: 30_000,
-			stdio: [ 'pipe', 'pipe', 'pipe' ],
+	let lastError: Error | null = null;
+	for ( let attempt = 0; attempt < 3; attempt++ ) {
+		try {
+			return execSync(
+				`WP_ENV_HOME=./.wp-env-home npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy ${ command }`,
+				{
+					encoding: 'utf-8',
+					timeout: 60_000,
+					stdio: [ 'pipe', 'pipe', 'pipe' ],
+				}
+			);
+		} catch ( e ) {
+			lastError = e instanceof Error ? e : new Error( String( e ) );
+			if ( attempt < 2 ) {
+				const start = Date.now();
+				while ( Date.now() - start < 2000 ) {
+					// busy wait
+				}
+			}
 		}
-	);
+	}
+	throw lastError;
 }
 
 async function adminLogin(
 	page: import('@playwright/test').Page
 ): Promise< void > {
-	await page.goto( `${ TESTS_URL }/wp-login.php` );
-	await page.fill( '#user_login', 'admin' );
-	await page.fill( '#user_pass', 'password' );
-	await Promise.all( [
-		page.waitForNavigation( { timeout: 20000 } ),
-		page.click( '#wp-submit' ),
-	] );
-	await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
+	await page.goto( `${ TESTS_URL }/wp-admin/` );
+	if ( page.url().includes( 'wp-login.php' ) ) {
+		await page.fill( '#user_login', 'admin' );
+		await page.fill( '#user_pass', 'password' );
+		await page.click( '#wp-submit' );
+		await page.waitForSelector( '#wpadminbar', { timeout: 30000 } );
+		await page.waitForLoadState( 'domcontentloaded' );
+	}
 }
 
 test.describe.serial( 'Campaign admin UI', () => {

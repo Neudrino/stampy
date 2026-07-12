@@ -15,6 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use Stampy\Repositories\ListRepository;
+use Stampy\Repositories\SubscriberMetaRepository;
 use Stampy\Repositories\SubscriberRepository;
 use stdClass;
 use WP_List_Table;
@@ -36,11 +37,25 @@ class SubscribersListTable extends WP_List_Table {
 	private $subscribers;
 
 	/**
+	 * Subscriber meta repository.
+	 *
+	 * @var SubscriberMetaRepository
+	 */
+	private $meta;
+
+	/**
 	 * List repository.
 	 *
 	 * @var ListRepository
 	 */
 	private $lists;
+
+	/**
+	 * Cached meta for the current page (subscriber_id => [field_key => value]).
+	 *
+	 * @var array<int, array<string, string>>
+	 */
+	private array $page_meta = array();
 
 	/**
 	 * Constructor.
@@ -55,6 +70,7 @@ class SubscribersListTable extends WP_List_Table {
 		);
 
 		$this->subscribers = new SubscriberRepository();
+		$this->meta        = new SubscriberMetaRepository();
 		$this->lists       = new ListRepository();
 	}
 
@@ -67,6 +83,8 @@ class SubscribersListTable extends WP_List_Table {
 		return array(
 			'cb'           => '<input type="checkbox" />',
 			'email'        => __( 'Email', 'stampy' ),
+			'first_name'   => __( 'First Name', 'stampy' ),
+			'last_name'    => __( 'Last Name', 'stampy' ),
 			'status'       => __( 'Status', 'stampy' ),
 			'lists'        => __( 'Lists', 'stampy' ),
 			'created_at'   => __( 'Created', 'stampy' ),
@@ -95,9 +113,10 @@ class SubscribersListTable extends WP_List_Table {
 	 */
 	protected function get_bulk_actions(): array {
 		return array(
-			'delete'      => __( 'Delete', 'stampy' ),
-			'unsubscribe' => __( 'Unsubscribe', 'stampy' ),
-			'resubscribe' => __( 'Re-subscribe', 'stampy' ),
+			'delete'           => __( 'Delete', 'stampy' ),
+			'set_pending'      => __( 'Set Pending', 'stampy' ),
+			'set_confirmed'    => __( 'Set Confirmed', 'stampy' ),
+			'set_unsubscribed' => __( 'Set Unsubscribed', 'stampy' ),
 		);
 	}
 
@@ -142,6 +161,11 @@ class SubscribersListTable extends WP_List_Table {
 		);
 
 		$this->items = $this->subscribers->get_all( $args );
+
+		$this->page_meta = array();
+		foreach ( $this->items as $row ) {
+			$this->page_meta[ (int) $row->id ] = $this->meta->get_all( (int) $row->id );
+		}
 
 		$total = $this->subscribers->count_filtered(
 			array(
@@ -212,6 +236,28 @@ class SubscribersListTable extends WP_List_Table {
 			esc_html( $item->email ),
 			$this->row_actions( $actions )
 		);
+	}
+
+	/**
+	 * Render the first name column.
+	 *
+	 * @param stdClass $item Subscriber row.
+	 * @return string
+	 */
+	public function column_first_name( $item ): string {
+		$value = $this->page_meta[ (int) $item->id ]['first_name'] ?? '';
+		return '' !== $value ? esc_html( $value ) : esc_html__( '—', 'stampy' );
+	}
+
+	/**
+	 * Render the last name column.
+	 *
+	 * @param stdClass $item Subscriber row.
+	 * @return string
+	 */
+	public function column_last_name( $item ): string {
+		$value = $this->page_meta[ (int) $item->id ]['last_name'] ?? '';
+		return '' !== $value ? esc_html( $value ) : esc_html__( '—', 'stampy' );
 	}
 
 	/**
@@ -293,7 +339,91 @@ class SubscribersListTable extends WP_List_Table {
 	}
 
 	/**
-	 * Process bulk and individual actions.
+	 * Handle bulk actions on the load-{page-hook} action.
+	 *
+	 * This runs before the admin header is output, so redirects work.
+	 *
+	 * @return void
+	 */
+	public static function handle_bulk_action(): void {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$action = isset( $_REQUEST['action'] ) && '-1' !== $_REQUEST['action'] ? sanitize_key( $_REQUEST['action'] ) : '';
+		if ( '' === $action ) {
+			$action = isset( $_REQUEST['action2'] ) && '-1' !== $_REQUEST['action2'] ? sanitize_key( $_REQUEST['action2'] ) : '';
+		}
+
+		if ( '' === $action ) {
+			return;
+		}
+
+		$valid_actions = array( 'delete', 'set_pending', 'set_confirmed', 'set_unsubscribed' );
+		if ( ! in_array( $action, $valid_actions, true ) ) {
+			return;
+		}
+
+		if ( ! isset( $_POST['subscriber'] ) ) {
+			return;
+		}
+
+		check_admin_referer( 'bulk-subscribers' );
+		$ids = array_map( 'intval', (array) wp_unslash( $_POST['subscriber'] ) );
+		// phpcs:enable
+
+		if ( count( $ids ) === 0 ) {
+			return;
+		}
+
+		$subscribers_repo = new SubscriberRepository();
+		$status_map       = array(
+			'set_pending'      => 'pending',
+			'set_confirmed'    => 'confirmed',
+			'set_unsubscribed' => 'unsubscribed',
+		);
+		$count            = 0;
+
+		foreach ( $ids as $id ) {
+			if ( 'delete' === $action ) {
+				$subscribers_repo->delete( $id );
+				++$count;
+			} elseif ( array_key_exists( $action, $status_map ) ) {
+				$subscribers_repo->update_status( $id, $status_map[ $action ] );
+				++$count;
+			}
+		}
+
+		$labels = array(
+			'delete'           => __( 'deleted', 'stampy' ),
+			'set_pending'      => __( 'set pending', 'stampy' ),
+			'set_confirmed'    => __( 'set confirmed', 'stampy' ),
+			'set_unsubscribed' => __( 'set unsubscribed', 'stampy' ),
+		);
+
+		$message = sprintf(
+			/* translators: 1: number of subscribers, 2: action label */
+			_n( '%1$d subscriber %2$s.', '%1$d subscribers %2$s.', $count, 'stampy' ),
+			$count,
+			$labels[ $action ] ?? __( 'updated', 'stampy' )
+		);
+
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'             => 'stampy-subscribers',
+					'stampy_bulk_done' => '1',
+					'stampy_bulk_msg'  => $message,
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
+	}
+
+	/**
+	 * Process single-row delete action (via GET link).
 	 *
 	 * @return void
 	 */
@@ -303,40 +433,32 @@ class SubscribersListTable extends WP_List_Table {
 			return;
 		}
 
-		$ids = array();
-
-		if ( 'delete' === $action && isset( $_GET['subscriber_id'] ) ) {
-			// Single row delete.
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$id = (int) $_GET['subscriber_id'];
-			// phpcs:ignore WordPress.Security.NonceVerification.Recommended
-			$nonce = isset( $_GET['stampy_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['stampy_nonce'] ) ) : '';
-			if ( $id > 0 && wp_verify_nonce( $nonce, 'stampy_delete_subscriber_' . $id ) ) {
-				$ids = array( $id );
-			}
-		} elseif ( isset( $_POST['subscriber'] ) ) {
-			// Bulk action.
-			// phpcs:disable WordPress.Security.NonceVerification.Missing
-			check_admin_referer( 'bulk-' . $this->_args['plural'] );
-			$ids = array_map( 'intval', (array) wp_unslash( $_POST['subscriber'] ) );
-			// phpcs:enable
+		if ( 'delete' !== $action || ! isset( $_GET['subscriber_id'] ) ) {
+			return;
 		}
 
-		if ( count( $ids ) === 0 ) {
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended
+		$id    = (int) $_GET['subscriber_id'];
+		$nonce = isset( $_GET['stampy_nonce'] ) ? sanitize_text_field( wp_unslash( $_GET['stampy_nonce'] ) ) : '';
+		// phpcs:enable
+
+		if ( $id <= 0 || ! wp_verify_nonce( $nonce, 'stampy_delete_subscriber_' . $id ) ) {
 			return;
 		}
 
 		$subscribers_repo = new SubscriberRepository();
-		$lists_repo       = new ListRepository();
+		$subscribers_repo->delete( $id );
 
-		foreach ( $ids as $id ) {
-			if ( 'delete' === $action ) {
-				$subscribers_repo->delete( $id );
-			} elseif ( 'unsubscribe' === $action ) {
-				$subscribers_repo->update_status( $id, 'unsubscribed' );
-			} elseif ( 'resubscribe' === $action ) {
-				$subscribers_repo->update_status( $id, 'confirmed' );
-			}
-		}
+		wp_safe_redirect(
+			add_query_arg(
+				array(
+					'page'             => 'stampy-subscribers',
+					'stampy_bulk_done' => '1',
+					'stampy_bulk_msg'  => __( 'Subscriber deleted.', 'stampy' ),
+				),
+				admin_url( 'admin.php' )
+			)
+		);
+		exit;
 	}
 }

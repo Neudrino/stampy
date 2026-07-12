@@ -1,4 +1,5 @@
 import { execSync } from 'child_process';
+import { chromium } from '@playwright/test';
 
 function wpCli( command: string ): string {
 	return execSync(
@@ -48,4 +49,21 @@ export default async function globalSetup() {
 
 	// Seed subscribers so the admin subscribers table has data rows.
 	wpCli( `wp stampy seed --subscribers=10 --list=e2e-test` );
+
+	// Log in once and save the session so all tests can reuse it
+	// without each triggering a separate WP login (which races under
+	// fullyParallel mode).
+	const browser = await chromium.launch();
+	const context = await browser.newContext();
+	const page = await context.newPage();
+
+	await page.goto( 'http://localhost:8889/wp-login.php' );
+	await page.fill( '#user_login', 'admin' );
+	await page.fill( '#user_pass', 'password' );
+	await page.click( '#wp-submit' );
+	await page.waitForSelector( '#wpadminbar', { timeout: 30000 } );
+	await page.waitForLoadState( 'domcontentloaded' );
+
+	await context.storageState( { path: 'tests/e2e/.auth/admin.json' } );
+	await browser.close();
 }

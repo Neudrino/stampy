@@ -3,7 +3,7 @@
  * Field-type validator registry.
  *
  * Maps field types to their validator implementations. Extensible:
- * §10 R2 adds more validators to the same registry.
+ * Phase 13 adds more validators; Phase 14 form builder adds the rest.
  *
  * @package Stampy
  */

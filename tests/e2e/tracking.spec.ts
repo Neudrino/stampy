@@ -12,35 +12,75 @@ import { test, expect, request } from '@playwright/test';
 import { execSync } from 'child_process';
 
 const MAILPIT_TESTS_API = 'http://localhost:8026/api/v1';
+const MAILPIT_DEV_API = 'http://localhost:8025/api/v1';
 
 function wpCli( command: string ): string {
-	return execSync(
-		`WP_ENV_HOME=./.wp-env-home npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy ${ command }`,
-		{
-			encoding: 'utf-8',
-			timeout: 30_000,
-			stdio: [ 'pipe', 'pipe', 'pipe' ],
+	let lastError: Error | null = null;
+	for ( let attempt = 0; attempt < 3; attempt++ ) {
+		try {
+			return execSync(
+				`WP_ENV_HOME=./.wp-env-home npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy ${ command }`,
+				{
+					encoding: 'utf-8',
+					timeout: 60_000,
+					stdio: [ 'pipe', 'pipe', 'pipe' ],
+				}
+			);
+		} catch ( e ) {
+			lastError = e instanceof Error ? e : new Error( String( e ) );
+			if ( attempt < 2 ) {
+				const start = Date.now();
+				while ( Date.now() - start < 2000 ) {
+					// busy wait
+				}
+			}
 		}
+	}
+	throw lastError;
+}
+
+async function waitForCampaignEmail(
+	subjectContains: string,
+	timeout = 30_000
+): Promise< any > {
+	const startTime = Date.now();
+	const apis = [ MAILPIT_TESTS_API, MAILPIT_DEV_API ];
+
+	while ( Date.now() - startTime < timeout ) {
+		for ( const api of apis ) {
+			const ctx = await request.newContext();
+			const response = await ctx.get(
+				`${ api }/search?query=${ encodeURIComponent(
+					'subject:' + subjectContains
+				) }`
+			);
+			const body = await response.json();
+
+			if ( body.messages && body.messages.length > 0 ) {
+				const msg = body.messages[ 0 ];
+				const detailResponse = await ctx.get(
+					`${ api }/message/${ msg.ID }`
+				);
+				const detail = await detailResponse.json();
+				await ctx.dispose();
+				return detail;
+			}
+
+			await ctx.dispose();
+		}
+
+		await new Promise( ( resolve ) => setTimeout( resolve, 500 ) );
+	}
+
+	throw new Error(
+		`No email with subject containing "${ subjectContains }" received within ${ timeout }ms`
 	);
-}
-
-async function clearMailpit(): Promise< void > {
-	const ctx = await request.newContext();
-	await ctx.delete( `${ MAILPIT_TESTS_API }/messages` );
-	await ctx.dispose();
-}
-
-async function getMailpitMessages(): Promise< any[] > {
-	const ctx = await request.newContext();
-	const response = await ctx.get( `${ MAILPIT_TESTS_API }/messages` );
-	const body = await response.json();
-	await ctx.dispose();
-	return body.messages || [];
 }
 
 test.describe.serial( 'Tracking', () => {
 	test( 'tracking pixel and click redirect are injected and record events', async () => {
-		await clearMailpit();
+		test.setTimeout( 120_000 );
+		const subject = `Tracking E2E ${ Date.now() }`;
 
 		// Ensure SMTP is NOT configured so the dev mu-plugin routes mail
 		// to the tests Mailpit.
@@ -56,6 +96,7 @@ test.describe.serial( 'Tracking', () => {
 
 		// Create a campaign with a link.
 		const listId = process.env.STAMPY_E2E_LIST_ID || '1';
+		const escapedSubject = subject.replace( /'/g, `\\'` );
 		const createOutput = wpCli(
 			`wp eval '
 			$post_id = wp_insert_post( array(
@@ -64,7 +105,7 @@ test.describe.serial( 'Tracking', () => {
 				"post_content" => "<!-- wp:paragraph --><p>Hello {first_name}! <a href=\\"https://example.com/target\\">Click here</a></p><!-- /wp:paragraph -->",
 				"post_status" => "publish",
 			) );
-			update_post_meta( $post_id, "stampy_campaign_subject", "Tracking E2E" );
+			update_post_meta( $post_id, "stampy_campaign_subject", "${ escapedSubject }" );
 			update_post_meta( $post_id, "stampy_campaign_list_ids", "[${ listId }]" );
 			update_post_meta( $post_id, "stampy_campaign_status", "draft" );
 			echo $post_id;
@@ -86,59 +127,36 @@ test.describe.serial( 'Tracking', () => {
 			'`
 		);
 
-		// Wait for emails to arrive.
-		await new Promise( ( resolve ) => setTimeout( resolve, 2000 ) );
+		// Wait for the campaign email to arrive.
+		const detail = await waitForCampaignEmail( subject, 30_000 );
 
-		const messages = await getMailpitMessages();
-		expect( messages.length ).toBeGreaterThan( 0 );
+		const msgSubject = detail.Subject || detail.subject || '';
+		const msgBody =
+			detail.HTML || detail.html || detail.Text || detail.text || '';
 
-		// Find the campaign email and extract pixel + click URLs.
-		const ctx = await request.newContext();
-		let pixelUrl = '';
-		let clickUrl = '';
+		expect( msgSubject ).toContain( subject );
 
-		for ( const msg of messages ) {
-			const detailResponse = await ctx.get(
-				`${ MAILPIT_TESTS_API }/message/${ msg.ID }`
-			);
-			const detail = await detailResponse.json();
+		// Verify the email body has tracking elements.
+		expect( msgBody ).toContain( 'stampy_trk_r' );
+		expect( msgBody ).toContain( 'stampy_clk_r' );
 
-			const msgSubject = detail.Subject || detail.subject || '';
-			const msgBody =
-				detail.HTML || detail.html || detail.Text || detail.text || '';
+		// Extract the pixel URL.
+		const pixelMatch = msgBody.match(
+			/<img[^>]+src="(http[^"]*stampy_trk_r=[^"]+)"/i
+		);
+		expect( pixelMatch ).not.toBeNull();
+		const pixelUrl = pixelMatch![ 1 ]
+			.replace( /&amp;/g, '&' )
+			.replace( /&#038;/g, '&' );
 
-			if ( msgSubject.includes( 'Tracking E2E' ) ) {
-				// Extract the pixel URL.
-				const pixelMatch = msgBody.match(
-					/<img[^>]+src="(http[^"]*stampy_trk_r=[^"]+)"/i
-				);
-				if ( pixelMatch ) {
-					pixelUrl = pixelMatch[ 1 ]
-						.replace( /&amp;/g, '&' )
-						.replace( /&#038;/g, '&' );
-				}
-
-				// Extract the click URL.
-				const clickMatch = msgBody.match(
-					/href="(http[^"]*stampy_clk_r=[^"]+)"/i
-				);
-				if ( clickMatch ) {
-					clickUrl = clickMatch[ 1 ]
-						.replace( /&amp;/g, '&' )
-						.replace( /&#038;/g, '&' );
-				}
-
-				// Verify the email body has tracking elements.
-				expect( msgBody ).toContain( 'stampy_trk_r' );
-				expect( msgBody ).toContain( 'stampy_clk_r' );
-				break;
-			}
-		}
-
-		await ctx.dispose();
-
-		expect( pixelUrl ).not.toBe( '' );
-		expect( clickUrl ).not.toBe( '' );
+		// Extract the click URL.
+		const clickMatch = msgBody.match(
+			/href="(http[^"]*stampy_clk_r=[^"]+)"/i
+		);
+		expect( clickMatch ).not.toBeNull();
+		const clickUrl = clickMatch![ 1 ]
+			.replace( /&amp;/g, '&' )
+			.replace( /&#038;/g, '&' );
 
 		// Hit the pixel URL to record an open.
 		const pixelCtx = await request.newContext();

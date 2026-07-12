@@ -51,6 +51,8 @@ if ( is_readable( $stampy_autoload ) ) {
 function bootstrap(): void {
 	load_action_scheduler();
 
+	load_plugin_textdomain( 'stampy', false, dirname( plugin_basename( PLUGIN_FILE ) ) . '/languages' );
+
 	Lifecycle::register();
 	Rewrites::register();
 	Rest\RestApi::register();
@@ -59,6 +61,7 @@ function bootstrap(): void {
 	Campaigns\CampaignPostType::register();
 	Campaigns\SendingEngine::register();
 	Tracking\TrackingEndpoints::register();
+	Privacy::register();
 	add_action( 'init', array( SignupBlock::class, 'register' ) );
 
 	if ( defined( 'WP_CLI' ) && WP_CLI ) {

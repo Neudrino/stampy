@@ -52,6 +52,27 @@ class SignupEndpointTest extends WP_UnitTestCase {
 	public function tearDown(): void {
 		unset( $GLOBALS['phpmailer_mock_sent'] );
 		parent::tearDown();
+
+		// Clean up subscribers created by test methods AFTER parent::tearDown()
+		// because dbDelta()'s implicit commit means data persists across tests.
+		global $wpdb;
+		$table      = \Stampy\Schema::table( 'subscribers', $wpdb );
+		$meta_table = \Stampy\Schema::table( 'subscriber_meta', $wpdb );
+		$emails     = array(
+			'test@example.com',
+			'consent-fail@example.com',
+			'invalid@example.com',
+			'resign@example.com',
+		);
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		foreach ( $emails as $email ) {
+			$sub_id = $wpdb->get_var( $wpdb->prepare( "SELECT id FROM $table WHERE email = %s", $email ) );
+			if ( $sub_id ) {
+				$wpdb->query( $wpdb->prepare( "DELETE FROM $meta_table WHERE subscriber_id = %d", (int) $sub_id ) );
+				$wpdb->query( $wpdb->prepare( "DELETE FROM $table WHERE id = %d", (int) $sub_id ) );
+			}
+		}
+		// phpcs:enable
 	}
 
 	/**
@@ -60,6 +81,9 @@ class SignupEndpointTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_valid_signup_creates_pending_and_sends_email(): void {
+		$subscriber_repo = new SubscriberRepository();
+		$initial_count   = $subscriber_repo->count();
+
 		$request = new WP_REST_Request( 'POST', '/stampy/v1/signup' );
 		$request->set_body_params(
 			array(
@@ -85,8 +109,7 @@ class SignupEndpointTest extends WP_UnitTestCase {
 		$this->assertSame( 'pending', $subscriber->status );
 
 		$pending_repo = new PendingSignupRepository();
-		$subscribers  = $subscriber_repo->count();
-		$this->assertSame( 1, $subscribers );
+		$this->assertSame( $initial_count + 1, $subscriber_repo->count() );
 
 		$this->assertNotEmpty( $GLOBALS['phpmailer_mock_sent'] );
 	}
@@ -229,6 +252,9 @@ class SignupEndpointTest extends WP_UnitTestCase {
 	 * @return void
 	 */
 	public function test_resignup_same_form_refreshes_pending(): void {
+		$subscriber_repo = new SubscriberRepository();
+		$initial_count   = $subscriber_repo->count();
+
 		$request = new WP_REST_Request( 'POST', '/stampy/v1/signup' );
 		$request->set_body_params(
 			array(
@@ -255,7 +281,7 @@ class SignupEndpointTest extends WP_UnitTestCase {
 
 		$this->assertSame( 200, $response2->get_status() );
 
-		$subscriber_repo = new SubscriberRepository();
-		$this->assertSame( 1, $subscriber_repo->count() );
+		// Resignup should not create a duplicate subscriber.
+		$this->assertSame( $initial_count + 1, $subscriber_repo->count() );
 	}
 }

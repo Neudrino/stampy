@@ -112,6 +112,8 @@ final class CampaignPostType {
 			true
 		);
 
+		wp_set_script_translations( 'stampy-campaign-editor-editor-script', 'stampy', plugin_dir_path( PLUGIN_FILE ) . 'languages' );
+
 		$lists_repo      = new ListRepository();
 		$lists           = $lists_repo->all();
 		$lists_formatted = array();
@@ -167,7 +169,7 @@ final class CampaignPostType {
 					'search_items'             => __( 'Search Campaigns', 'stampy' ),
 					'not_found'                => __( 'No campaigns found.', 'stampy' ),
 					'not_found_in_trash'       => __( 'No campaigns found in trash.', 'stampy' ),
-					'all_items'                => __( 'All Campaigns', 'stampy' ),
+					'all_items'                => __( 'Campaigns', 'stampy' ),
 					'archives'                 => __( 'Campaign Archives', 'stampy' ),
 					'attributes'               => __( 'Campaign Attributes', 'stampy' ),
 					'insert_into_item'         => __( 'Insert into campaign', 'stampy' ),

@@ -54,7 +54,9 @@ final class AdminMenu {
 			'manage_options',
 			'stampy-subscribers',
 			array( SubscribersPage::class, 'render' ),
-			'dashicons-email',
+			// phpcs:disable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode -- encoding SVG icon as data URI.
+			'data:image/svg+xml;base64,' . base64_encode( '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><text x="12" y="18" font-size="18" text-anchor="middle">&#x1F992;</text></svg>' ),
+			// phpcs:enable WordPress.PHP.DiscouragedPHPFunctions.obfuscation_base64_encode
 			26
 		);
 
@@ -86,6 +88,7 @@ final class AdminMenu {
 		);
 
 		add_action( 'load-' . $hook, array( SubscribersPage::class, 'setup_screen' ) );
+		add_action( 'load-' . $hook, array( SubscribersListTable::class, 'handle_bulk_action' ) );
 	}
 
 	/**
