@@ -71,6 +71,24 @@ function initSignupForms(): void {
 						: -1;
 				}
 
+				const turnstileToken = (
+					form.querySelector(
+						'[name="cf-turnstile-response"]'
+					) as HTMLInputElement | null
+				 )?.value;
+				if ( turnstileToken ) {
+					data.stampy_turnstile_token = turnstileToken;
+				}
+
+				const fcSolution = (
+					form.querySelector(
+						'[name="frc-captcha-response"]'
+					) as HTMLInputElement | null
+				 )?.value;
+				if ( fcSolution ) {
+					data.stampy_friendly_captcha_solution = fcSolution;
+				}
+
 				const response = ( await apiFetch( {
 					path: '/stampy/v1/signup',
 					method: 'POST',
