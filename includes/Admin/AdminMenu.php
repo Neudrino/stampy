@@ -30,6 +30,7 @@ final class AdminMenu {
 		add_action( 'admin_menu', array( self::class, 'add_menu' ) );
 		add_action( 'admin_post_stampy_save_subscriber', array( SubscribersPage::class, 'handle_save' ) );
 		add_action( 'admin_post_stampy_save_list', array( ListsPage::class, 'handle_save' ) );
+		add_action( 'admin_post_stampy_save_field', array( FieldsPage::class, 'handle_save' ) );
 		add_action( 'admin_post_stampy_save_smtp_settings', array( SettingsPage::class, 'handle_save_settings' ) );
 		add_action( 'admin_post_stampy_send_test_email', array( SettingsPage::class, 'handle_send_test' ) );
 		add_action( 'admin_post_stampy_campaign_preview', array( CampaignPreviewPage::class, 'handle_preview' ) );
@@ -77,6 +78,19 @@ final class AdminMenu {
 			'stampy-lists',
 			array( ListsPage::class, 'render' )
 		);
+
+		$fields_hook = add_submenu_page(
+			'stampy-subscribers',
+			__( 'Fields', 'stampy' ),
+			__( 'Fields', 'stampy' ),
+			'manage_options',
+			'stampy-fields',
+			array( FieldsPage::class, 'render' )
+		);
+
+		if ( $fields_hook ) {
+			add_action( 'load-' . $fields_hook, array( FieldsPage::class, 'handle_delete_action' ) );
+		}
 
 		add_submenu_page(
 			'stampy-subscribers',

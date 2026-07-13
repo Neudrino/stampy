@@ -42,6 +42,11 @@ final class ValidatorRegistry {
 	private function __construct() {
 		$this->register( new EmailValidator() );
 		$this->register( new TextValidator() );
+		$this->register( new TextareaValidator() );
+		$this->register( new NumberValidator() );
+		$this->register( new DateValidator() );
+		$this->register( new SelectValidator() );
+		$this->register( new CheckboxValidator() );
 		$this->register( new AcceptanceValidator() );
 	}
 

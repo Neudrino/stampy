@@ -14,13 +14,10 @@
 			"items": { "type": "integer" },
 			"default": []
 		},
-		"show_first_name": {
-			"type": "boolean",
-			"default": true
-		},
-		"show_last_name": {
-			"type": "boolean",
-			"default": true
+		"enabled_fields": {
+			"type": "array",
+			"items": { "type": "string" },
+			"default": []
 		}
 	},
 	"supports": {

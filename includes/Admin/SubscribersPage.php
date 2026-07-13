@@ -123,6 +123,14 @@ final class SubscribersPage {
 		}
 		?>
 		<div class="wrap">
+			<?php
+			// phpcs:disable WordPress.Security.NonceVerification.Recommended
+			$updated = isset( $_GET['updated'] ) ? sanitize_text_field( wp_unslash( $_GET['updated'] ) ) : '';
+			// phpcs:enable
+			if ( '1' === $updated ) {
+				echo '<div class="notice notice-success is-dismissible"><p>' . esc_html__( 'Subscriber updated.', 'stampy' ) . '</p></div>';
+			}
+			?>
 			<h1>
 				<?php esc_html_e( 'Edit Subscriber', 'stampy' ); ?>
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=stampy-subscribers' ) ); ?>" class="page-title-action">
@@ -170,12 +178,74 @@ final class SubscribersPage {
 				</table>
 
 				<?php if ( count( $fields ) > 0 ) : ?>
-					<h2><?php esc_html_e( 'Attributes (read-only)', 'stampy' ); ?></h2>
+					<h2><?php esc_html_e( 'Attributes', 'stampy' ); ?></h2>
 					<table class="form-table" role="presentation">
 						<?php foreach ( $fields as $field ) : ?>
 							<tr>
 								<th scope="row"><?php echo esc_html( $field->label ); ?></th>
-								<td><?php echo esc_html( $meta[ $field->field_key ] ?? '—' ); ?></td>
+								<td>
+									<?php
+									$field_value = $meta[ $field->field_key ] ?? '';
+									switch ( $field->type ) {
+										case 'textarea':
+											printf(
+												'<textarea name="meta[%s]" rows="3" class="large-text">%s</textarea>',
+												esc_attr( $field->field_key ),
+												esc_textarea( $field_value )
+											);
+											break;
+										case 'checkbox':
+											printf(
+												'<input type="checkbox" name="meta[%s]" value="1" %s />',
+												esc_attr( $field->field_key ),
+												'1' === (string) $field_value ? 'checked' : ''
+											);
+											break;
+										case 'number':
+											printf(
+												'<input type="number" name="meta[%s]" class="regular-text" value="%s" />',
+												esc_attr( $field->field_key ),
+												esc_attr( $field_value )
+											);
+											break;
+										case 'date':
+											printf(
+												'<input type="date" name="meta[%s]" class="regular-text" value="%s" />',
+												esc_attr( $field->field_key ),
+												esc_attr( $field_value )
+											);
+											break;
+										case 'select':
+											$options = json_decode( (string) ( $field->options ?? '' ), true );
+											if ( is_array( $options ) && count( $options ) > 0 ) {
+												printf( '<select name="meta[%s]">', esc_attr( $field->field_key ) );
+												printf( '<option value="">—</option>' );
+												foreach ( $options as $opt ) {
+													printf(
+														'<option value="%s" %s>%s</option>',
+														esc_attr( $opt ),
+														selected( $field_value, $opt, false ),
+														esc_html( $opt )
+													);
+												}
+												echo '</select>';
+											} else {
+												printf(
+													'<input type="text" name="meta[%s]" class="regular-text" value="%s" />',
+													esc_attr( $field->field_key ),
+													esc_attr( $field_value )
+												);
+											}
+											break;
+										default:
+											printf(
+												'<input type="text" name="meta[%s]" class="regular-text" value="%s" />',
+												esc_attr( $field->field_key ),
+												esc_attr( $field_value )
+											);
+									}
+									?>
+								</td>
 							</tr>
 						<?php endforeach; ?>
 					</table>
@@ -233,6 +303,7 @@ final class SubscribersPage {
 
 		$status   = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'pending';
 		$list_ids = isset( $_POST['list_ids'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['list_ids'] ) ) : array();
+		$meta     = isset( $_POST['meta'] ) ? (array) wp_unslash( $_POST['meta'] ) : array();
 		// phpcs:enable
 
 		if ( ! in_array( $status, array( 'pending', 'confirmed', 'unsubscribed' ), true ) ) {
@@ -241,8 +312,14 @@ final class SubscribersPage {
 
 		$subscribers_repo = new SubscriberRepository();
 		$lists_repo       = new ListRepository();
+		$meta_repo        = new SubscriberMetaRepository();
 
 		$subscribers_repo->update_status( $id, $status );
+
+		// Save subscriber attributes.
+		foreach ( $meta as $field_key => $value ) {
+			$meta_repo->set( $id, sanitize_key( $field_key ), sanitize_text_field( $value ) );
+		}
 
 		$all_lists = $lists_repo->all();
 		$my_lists  = $lists_repo->get_subscriber_lists( $id );

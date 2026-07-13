@@ -101,7 +101,7 @@ test.describe.serial( 'Campaign send', () => {
 			$post_id = wp_insert_post( array(
 				"post_type" => "stampy_campaign",
 				"post_title" => "E2E Campaign",
-				"post_content" => "<!-- wp:paragraph --><p>Hello {first_name}! Your email is {email}.</p><!-- /wp:paragraph -->",
+				"post_content" => "<!-- wp:paragraph --><p>Hello {field:first_name}! Your email is {email}.</p><!-- /wp:paragraph -->",
 				"post_status" => "publish",
 			) );
 			update_post_meta( $post_id, "stampy_campaign_subject", "${ escapedSubject }" );
@@ -138,7 +138,7 @@ test.describe.serial( 'Campaign send', () => {
 		expect( msgSubject ).toContain( subject );
 
 		// Verify the email has personalized content (merge tags replaced).
-		expect( msgBody ).not.toContain( '{first_name}' );
+		expect( msgBody ).not.toContain( '{field:first_name}' );
 		expect( msgBody ).not.toContain( '{email}' );
 	} );
 } );

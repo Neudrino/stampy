@@ -21,10 +21,19 @@ declare global {
 		answer: string;
 	}
 
+	interface StampyField {
+		key: string;
+		label: string;
+		type: string;
+		options: string[] | null;
+		required: boolean;
+	}
+
 	interface StampyGlobal {
 		restUrl: string;
 		restNonce: string;
 		lists: StampyList[];
+		fields?: StampyField[];
 		consentText: string;
 		quizQuestions?: StampyQuizQuestion[];
 		turnstileEnabled?: boolean;

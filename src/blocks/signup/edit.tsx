@@ -7,11 +7,11 @@ import {
 } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import type { BlockEditProps } from '@wordpress/blocks';
+import { useEffect } from '@wordpress/element';
 
 interface SignupBlockAttributes {
 	list_ids: number[];
-	show_first_name: boolean;
-	show_last_name: boolean;
+	enabled_fields: string[];
 	[ key: string ]: unknown;
 }
 
@@ -30,14 +30,86 @@ const consentText: string =
 const quizQuestions: { question: string; answer: string }[] =
 	( typeof window !== 'undefined' && window.stampy?.quizQuestions ) || [];
 
+function getCustomFields(): StampyField[] {
+	return ( typeof window !== 'undefined' && window.stampy?.fields ) || [];
+}
+
+function renderFieldInput( field: StampyField ): JSX.Element {
+	const id = `stampy-${ field.key }`;
+
+	if ( field.type === 'textarea' ) {
+		return (
+			<textarea
+				id={ id }
+				name={ field.key }
+				className="stampy-signup-input"
+			/>
+		);
+	}
+
+	if ( field.type === 'select' && field.options ) {
+		return (
+			<select
+				id={ id }
+				name={ field.key }
+				className="stampy-signup-input"
+			>
+				<option value="">—</option>
+				{ field.options.map( ( opt ) => (
+					<option key={ opt } value={ opt }>
+						{ opt }
+					</option>
+				) ) }
+			</select>
+		);
+	}
+
+	if ( field.type === 'checkbox' ) {
+		return (
+			<input
+				type="checkbox"
+				id={ id }
+				name={ field.key }
+				value="1"
+				className="stampy-signup-input"
+			/>
+		);
+	}
+
+	const inputType =
+		field.type === 'number' || field.type === 'date' ? field.type : 'text';
+
+	return (
+		<input
+			type={ inputType }
+			id={ id }
+			name={ field.key }
+			className="stampy-signup-input"
+			required={ field.required }
+		/>
+	);
+}
+
 export default function Edit( {
 	attributes,
 	setAttributes,
 	className,
 }: EditProps ) {
 	const listIds = attributes.list_ids;
-	const showFirstName = attributes.show_first_name;
-	const showLastName = attributes.show_last_name;
+	const enabledFields = attributes.enabled_fields || [];
+	const customFields = getCustomFields();
+
+	// Auto-select required fields and deselect optional fields when a new
+	// block is created (enabled_fields is empty = default from block.json).
+	useEffect( () => {
+		if ( enabledFields.length === 0 && customFields.length > 0 ) {
+			const requiredKeys = customFields
+				.filter( ( f ) => f.required )
+				.map( ( f ) => f.key );
+			setAttributes( { enabled_fields: requiredKeys } );
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [] );
 
 	const toggleList = ( listId: number, checked: boolean ) => {
 		if ( checked ) {
@@ -47,6 +119,18 @@ export default function Edit( {
 		} else {
 			setAttributes( {
 				list_ids: listIds.filter( ( id ) => id !== listId ),
+			} );
+		}
+	};
+
+	const toggleField = ( key: string, checked: boolean ) => {
+		if ( checked ) {
+			setAttributes( {
+				enabled_fields: [ ...enabledFields, key ],
+			} );
+		} else {
+			setAttributes( {
+				enabled_fields: enabledFields.filter( ( k ) => k !== key ),
 			} );
 		}
 	};
@@ -88,20 +172,25 @@ export default function Edit( {
 					title={ __( 'Form Fields', 'stampy' ) }
 					initialOpen={ true }
 				>
-					<ToggleControl
-						label={ __( 'Show First Name', 'stampy' ) }
-						checked={ showFirstName }
-						onChange={ ( value ) =>
-							setAttributes( { show_first_name: value } )
-						}
-					/>
-					<ToggleControl
-						label={ __( 'Show Last Name', 'stampy' ) }
-						checked={ showLastName }
-						onChange={ ( value ) =>
-							setAttributes( { show_last_name: value } )
-						}
-					/>
+					{ customFields.length === 0 ? (
+						<p>
+							{ __(
+								'No fields defined. Create fields in the Stampy admin under Fields.',
+								'stampy'
+							) }
+						</p>
+					) : (
+						customFields.map( ( field ) => (
+							<ToggleControl
+								key={ field.key }
+								label={ field.label }
+								checked={ enabledFields.includes( field.key ) }
+								onChange={ ( value ) =>
+									toggleField( field.key, value )
+								}
+							/>
+						) )
+					) }
 				</PanelBody>
 			</InspectorControls>
 
@@ -116,32 +205,27 @@ export default function Edit( {
 				) }
 
 				<form className="stampy-signup-form">
-					{ showFirstName && (
-						<p className="stampy-signup-field">
-							<label htmlFor="stampy-first-name">
-								{ __( 'First Name', 'stampy' ) }
-							</label>
-							<input
-								type="text"
-								id="stampy-first-name"
-								name="first_name"
-								className="stampy-signup-input"
-							/>
-						</p>
-					) }
-					{ showLastName && (
-						<p className="stampy-signup-field">
-							<label htmlFor="stampy-last-name">
-								{ __( 'Last Name', 'stampy' ) }
-							</label>
-							<input
-								type="text"
-								id="stampy-last-name"
-								name="last_name"
-								className="stampy-signup-input"
-							/>
-						</p>
-					) }
+					{ customFields
+						.filter( ( f ) => enabledFields.includes( f.key ) )
+						.map( ( field ) => (
+							<p
+								key={ field.key }
+								className="stampy-signup-field"
+							>
+								<label htmlFor={ `stampy-${ field.key }` }>
+									{ field.label }
+									{ field.required && (
+										<span
+											aria-hidden="true"
+											className="required"
+										>
+											{ ' *' }
+										</span>
+									) }
+								</label>
+								{ renderFieldInput( field ) }
+							</p>
+						) ) }
 					<p className="stampy-signup-field">
 						<label htmlFor="stampy-email">
 							{ __( 'Email', 'stampy' ) }
