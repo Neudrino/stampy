@@ -22,6 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use Stampy\Repositories\ConsentTextRepository;
+use Stampy\Repositories\FieldRepository;
 use Stampy\Repositories\ListRepository;
 use Stampy\Repositories\PendingSignupRepository;
 use Stampy\Repositories\SubscriberMetaRepository;
@@ -174,14 +175,29 @@ final class SignupService {
 		$raw_fields       = is_array( $request['fields'] ?? null ) ? $request['fields'] : array();
 		$validated_fields = array();
 
+		$fields_repo = new FieldRepository();
+		$field_defs  = array();
+		foreach ( $fields_repo->all() as $field_def ) {
+			$field_defs[ $field_def->field_key ] = $field_def;
+		}
+
 		foreach ( $raw_fields as $key => $value ) {
 			$field_key = sanitize_key( (string) $key );
 
-			$text_result = $this->validators->validate( 'text', $value );
-			if ( ! $text_result->is_valid() ) {
-				$errors[ $field_key ] = $text_result->error();
+			$validator_type = 'text';
+			if ( isset( $field_defs[ $field_key ] ) ) {
+				$validator_type = $field_defs[ $field_key ]->type;
+			}
+
+			if ( ! $this->validators->has( $validator_type ) ) {
+				$validator_type = 'text';
+			}
+
+			$result = $this->validators->validate( $validator_type, $value );
+			if ( ! $result->is_valid() ) {
+				$errors[ $field_key ] = $result->error();
 			} else {
-				$validated_fields[ $field_key ] = $text_result->sanitized();
+				$validated_fields[ $field_key ] = $result->sanitized();
 			}
 		}
 

@@ -32,12 +32,6 @@ function initSignupForms(): void {
 			const websiteCheck = (
 				formData.get( 'website_check' ) || ''
 			).toString();
-			const firstName = ( formData.get( 'first_name' ) || '' )
-				.toString()
-				.trim();
-			const lastName = ( formData.get( 'last_name' ) || '' )
-				.toString()
-				.trim();
 			const quizAnswer = ( formData.get( 'stampy_quiz_answer' ) || '' )
 				.toString()
 				.trim();
@@ -46,12 +40,33 @@ function initSignupForms(): void {
 			const listIds: number[] = JSON.parse( listIdsRaw );
 
 			const fields: Record< string, string > = {};
-			if ( firstName ) {
-				fields.first_name = firstName;
-			}
-			if ( lastName ) {
-				fields.last_name = lastName;
-			}
+
+			// Collect all custom field values from the form.
+			const customFieldInputs = form.querySelectorAll<
+				HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+			>( '[data-stampy-field]' );
+			customFieldInputs.forEach( ( input ) => {
+				const key = input.getAttribute( 'data-stampy-field' );
+				if ( ! key ) {
+					return;
+				}
+				let value: string;
+				if ( input instanceof HTMLInputElement ) {
+					if ( input.type === 'checkbox' ) {
+						if ( ! input.checked ) {
+							return;
+						}
+						value = input.value;
+					} else {
+						value = input.value.trim();
+					}
+				} else {
+					value = input.value.trim();
+				}
+				if ( value ) {
+					fields[ key ] = value;
+				}
+			} );
 
 			clearErrors( form );
 

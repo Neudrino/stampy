@@ -1,4 +1,6 @@
 import { renderToString } from 'react-dom/server';
+import React, { act } from 'react';
+import { createRoot } from 'react-dom/client';
 
 import Edit from './edit';
 
@@ -10,8 +12,7 @@ const mockLists: StampyList[] = [
 const defaultProps = {
 	attributes: {
 		list_ids: [] as number[],
-		show_first_name: true,
-		show_last_name: true,
+		enabled_fields: [] as string[],
 	},
 	setAttributes: jest.fn(),
 	className: '',
@@ -43,46 +44,6 @@ describe( 'SignupBlock Edit', () => {
 		expect( html ).toContain( 'type="email"' );
 		expect( html ).toContain( 'required' );
 		expect( html ).toContain( 'aria-required' );
-	} );
-
-	it( 'renders first name field by default', () => {
-		const html = renderToString( <Edit { ...defaultProps } /> );
-
-		expect( html ).toContain( 'name="first_name"' );
-	} );
-
-	it( 'renders last name field by default', () => {
-		const html = renderToString( <Edit { ...defaultProps } /> );
-
-		expect( html ).toContain( 'name="last_name"' );
-	} );
-
-	it( 'does not render first name field when show_first_name is false', () => {
-		const props = {
-			...defaultProps,
-			attributes: {
-				...defaultProps.attributes,
-				show_first_name: false,
-			},
-		};
-
-		const html = renderToString( <Edit { ...props } /> );
-
-		expect( html ).not.toContain( 'name="first_name"' );
-	} );
-
-	it( 'does not render last name field when show_last_name is false', () => {
-		const props = {
-			...defaultProps,
-			attributes: {
-				...defaultProps.attributes,
-				show_last_name: false,
-			},
-		};
-
-		const html = renderToString( <Edit { ...props } /> );
-
-		expect( html ).not.toContain( 'name="last_name"' );
 	} );
 
 	it( 'renders consent checkbox with consent text', () => {
@@ -154,10 +115,213 @@ describe( 'SignupBlock Edit', () => {
 		expect( html ).toContain( 'stampy-signup-form' );
 	} );
 
-	it( 'renders toggle controls for name fields in inspector', () => {
+	it( 'renders toggle controls for custom fields in inspector', () => {
+		( window as unknown as { stampy: StampyGlobal } ).stampy = {
+			...( window as unknown as { stampy: StampyGlobal } ).stampy,
+			fields: [
+				{
+					key: 'first_name',
+					label: 'First Name',
+					type: 'text',
+					options: null,
+					required: false,
+				},
+				{
+					key: 'company',
+					label: 'Company',
+					type: 'text',
+					options: null,
+					required: true,
+				},
+			],
+		};
+
 		const html = renderToString( <Edit { ...defaultProps } /> );
 
-		expect( html ).toContain( 'Show First Name' );
-		expect( html ).toContain( 'Show Last Name' );
+		expect( html ).toContain( 'First Name' );
+		expect( html ).toContain( 'Company' );
+	} );
+
+	it( 'renders enabled custom field inputs in the form', () => {
+		( window as unknown as { stampy: StampyGlobal } ).stampy = {
+			...( window as unknown as { stampy: StampyGlobal } ).stampy,
+			fields: [
+				{
+					key: 'company',
+					label: 'Company',
+					type: 'text',
+					options: null,
+					required: true,
+				},
+			],
+		};
+
+		const props = {
+			...defaultProps,
+			attributes: {
+				...defaultProps.attributes,
+				enabled_fields: [ 'company' ],
+			},
+		};
+
+		const html = renderToString( <Edit { ...props } /> );
+
+		expect( html ).toContain( 'name="company"' );
+	} );
+
+	it( 'does not render disabled custom field inputs', () => {
+		( window as unknown as { stampy: StampyGlobal } ).stampy = {
+			...( window as unknown as { stampy: StampyGlobal } ).stampy,
+			fields: [
+				{
+					key: 'company',
+					label: 'Company',
+					type: 'text',
+					options: null,
+					required: false,
+				},
+			],
+		};
+
+		const html = renderToString( <Edit { ...defaultProps } /> );
+
+		expect( html ).not.toContain( 'name="company"' );
+	} );
+
+	it( 'auto-selects required fields when enabled_fields is empty on mount', () => {
+		( window as unknown as { stampy: StampyGlobal } ).stampy = {
+			...( window as unknown as { stampy: StampyGlobal } ).stampy,
+			fields: [
+				{
+					key: 'first_name',
+					label: 'First Name',
+					type: 'text',
+					options: null,
+					required: true,
+				},
+				{
+					key: 'company',
+					label: 'Company',
+					type: 'text',
+					options: null,
+					required: false,
+				},
+			],
+		};
+
+		const setAttributes = jest.fn();
+		const props = {
+			...defaultProps,
+			setAttributes,
+		};
+
+		const container = document.createElement( 'div' );
+		document.body.appendChild( container );
+		const root = createRoot( container );
+
+		act( () => {
+			root.render( <Edit { ...props } /> );
+		} );
+
+		expect( setAttributes ).toHaveBeenCalledWith( {
+			enabled_fields: [ 'first_name' ],
+		} );
+
+		act( () => {
+			root.unmount();
+		} );
+		document.body.removeChild( container );
+	} );
+
+	it( 'does not auto-select when enabled_fields is already populated', () => {
+		( window as unknown as { stampy: StampyGlobal } ).stampy = {
+			...( window as unknown as { stampy: StampyGlobal } ).stampy,
+			fields: [
+				{
+					key: 'first_name',
+					label: 'First Name',
+					type: 'text',
+					options: null,
+					required: true,
+				},
+			],
+		};
+
+		const setAttributes = jest.fn();
+		const props = {
+			...defaultProps,
+			attributes: {
+				...defaultProps.attributes,
+				enabled_fields: [ 'first_name' ],
+			},
+			setAttributes,
+		};
+
+		const container = document.createElement( 'div' );
+		document.body.appendChild( container );
+		const root = createRoot( container );
+
+		act( () => {
+			root.render( <Edit { ...props } /> );
+		} );
+
+		expect( setAttributes ).not.toHaveBeenCalled();
+
+		act( () => {
+			root.unmount();
+		} );
+		document.body.removeChild( container );
+	} );
+
+	it( 'excludes optional fields from auto-select', () => {
+		( window as unknown as { stampy: StampyGlobal } ).stampy = {
+			...( window as unknown as { stampy: StampyGlobal } ).stampy,
+			fields: [
+				{
+					key: 'first_name',
+					label: 'First Name',
+					type: 'text',
+					options: null,
+					required: true,
+				},
+				{
+					key: 'company',
+					label: 'Company',
+					type: 'text',
+					options: null,
+					required: false,
+				},
+				{
+					key: 'phone',
+					label: 'Phone',
+					type: 'text',
+					options: null,
+					required: true,
+				},
+			],
+		};
+
+		const setAttributes = jest.fn();
+		const props = {
+			...defaultProps,
+			setAttributes,
+		};
+
+		const container = document.createElement( 'div' );
+		document.body.appendChild( container );
+		const root = createRoot( container );
+
+		act( () => {
+			root.render( <Edit { ...props } /> );
+		} );
+
+		expect( setAttributes ).toHaveBeenCalledWith( {
+			enabled_fields: [ 'first_name', 'phone' ],
+		} );
+
+		act( () => {
+			root.unmount();
+		} );
+		document.body.removeChild( container );
 	} );
 } );
