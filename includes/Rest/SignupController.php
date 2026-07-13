@@ -70,38 +70,49 @@ final class SignupController {
 				'callback'            => array( $this, 'handle_signup' ),
 				'permission_callback' => '__return_true',
 				'args'                => array(
-					'email'         => array(
+					'email'              => array(
 						'required'          => true,
 						'type'              => 'string',
 						'sanitize_callback' => 'sanitize_text_field',
 					),
-					'fields'        => array(
+					'fields'             => array(
 						'required'          => false,
 						'type'              => 'object',
 						'default'           => array(),
 						'sanitize_callback' => array( $this, 'sanitize_fields' ),
 					),
-					'consent'       => array(
+					'consent'            => array(
 						'required' => true,
 						'type'     => 'boolean',
 						'default'  => false,
 					),
-					'form_id'       => array(
+					'form_id'            => array(
 						'required' => false,
 						'type'     => 'integer',
 						'default'  => 0,
 					),
-					'list_ids'      => array(
+					'list_ids'           => array(
 						'required'          => true,
 						'type'              => 'array',
 						'items'             => array( 'type' => 'integer' ),
 						'sanitize_callback' => array( $this, 'sanitize_list_ids' ),
 					),
-					'website_check' => array(
+					'website_check'      => array(
 						'required'          => false,
 						'type'              => 'string',
 						'default'           => '',
 						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'stampy_quiz_answer' => array(
+						'required'          => false,
+						'type'              => 'string',
+						'default'           => '',
+						'sanitize_callback' => 'sanitize_text_field',
+					),
+					'stampy_quiz_index'  => array(
+						'required' => false,
+						'type'     => 'integer',
+						'default'  => -1,
 					),
 				),
 			)
@@ -150,12 +161,14 @@ final class SignupController {
 	public function handle_signup( WP_REST_Request $request ): WP_REST_Response {
 		$result = $this->service->signup(
 			array(
-				'email'         => (string) $request->get_param( 'email' ),
-				'fields'        => $request->get_param( 'fields' ),
-				'consent'       => (bool) $request->get_param( 'consent' ),
-				'form_id'       => null !== $request->get_param( 'form_id' ) ? (int) $request->get_param( 'form_id' ) : null,
-				'list_ids'      => $request->get_param( 'list_ids' ),
-				'website_check' => (string) $request->get_param( 'website_check' ),
+				'email'              => (string) $request->get_param( 'email' ),
+				'fields'             => $request->get_param( 'fields' ),
+				'consent'            => (bool) $request->get_param( 'consent' ),
+				'form_id'            => null !== $request->get_param( 'form_id' ) ? (int) $request->get_param( 'form_id' ) : null,
+				'list_ids'           => $request->get_param( 'list_ids' ),
+				'website_check'      => (string) $request->get_param( 'website_check' ),
+				'stampy_quiz_answer' => (string) $request->get_param( 'stampy_quiz_answer' ),
+				'stampy_quiz_index'  => (int) $request->get_param( 'stampy_quiz_index' ),
 			)
 		);
 

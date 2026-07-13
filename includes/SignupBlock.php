@@ -16,6 +16,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use Stampy\Repositories\ConsentTextRepository;
 use Stampy\Repositories\ListRepository;
+use Stampy\SpamGuards\QuizGuard;
 
 /**
  * Registers the Stampy Signup block and renders it server-side.
@@ -65,10 +66,11 @@ final class SignupBlock {
 		}
 
 		return array(
-			'restUrl'     => esc_url_raw( rest_url( 'stampy/v1' ) ),
-			'restNonce'   => wp_create_nonce( 'wp_rest' ),
-			'lists'       => $lists_formatted,
-			'consentText' => $consent_text,
+			'restUrl'       => esc_url_raw( rest_url( 'stampy/v1' ) ),
+			'restNonce'     => wp_create_nonce( 'wp_rest' ),
+			'lists'         => $lists_formatted,
+			'consentText'   => $consent_text,
+			'quizQuestions' => QuizGuard::get_questions(),
 		);
 	}
 
@@ -187,7 +189,28 @@ final class SignupBlock {
 					</label>
 				</p>
 
-				<p class="stampy-signup-field stampy-signup-honeypot" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
+				<?php
+				$quiz_questions = QuizGuard::get_questions();
+				if ( count( $quiz_questions ) > 0 ) :
+					$quiz_index = wp_rand( 0, count( $quiz_questions ) - 1 );
+					?>
+				<p class="stampy-signup-field stampy-signup-quiz">
+					<label for="stampy-quiz-<?php echo esc_attr( (string) wp_rand() ); ?>">
+						<?php echo esc_html( $quiz_questions[ $quiz_index ]['question'] ); ?>
+						<span class="required" aria-hidden="true">*</span>
+					</label>
+					<input
+						type="text"
+						name="stampy_quiz_answer"
+						class="stampy-signup-input"
+						required
+						aria-required="true"
+					/>
+					<input type="hidden" name="stampy_quiz_index" value="<?php echo esc_attr( (string) $quiz_index ); ?>" />
+				</p>
+				<?php endif; ?>
+
+			<p class="stampy-signup-field stampy-signup-honeypot" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
 					<label>
 						<?php esc_html_e( 'Website', 'stampy' ); ?>
 						<input
