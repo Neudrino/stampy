@@ -38,6 +38,10 @@ function initSignupForms(): void {
 			const lastName = ( formData.get( 'last_name' ) || '' )
 				.toString()
 				.trim();
+			const quizAnswer = ( formData.get( 'stampy_quiz_answer' ) || '' )
+				.toString()
+				.trim();
+			const quizIndex = formData.get( 'stampy_quiz_index' );
 			const listIdsRaw = form.getAttribute( 'data-list-ids' ) || '[]';
 			const listIds: number[] = JSON.parse( listIdsRaw );
 
@@ -52,16 +56,25 @@ function initSignupForms(): void {
 			clearErrors( form );
 
 			try {
+				const data: Record< string, unknown > = {
+					email,
+					fields,
+					consent: consent !== null,
+					list_ids: listIds,
+					website_check: websiteCheck,
+				};
+
+				if ( quizAnswer ) {
+					data.stampy_quiz_answer = quizAnswer;
+					data.stampy_quiz_index = quizIndex
+						? parseInt( quizIndex.toString(), 10 )
+						: -1;
+				}
+
 				const response = ( await apiFetch( {
 					path: '/stampy/v1/signup',
 					method: 'POST',
-					data: {
-						email,
-						fields,
-						consent: consent !== null,
-						list_ids: listIds,
-						website_check: websiteCheck,
-					},
+					data,
 				} ) ) as SignupResponse;
 
 				if ( response.success ) {
