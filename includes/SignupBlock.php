@@ -16,7 +16,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 use Stampy\Repositories\ConsentTextRepository;
 use Stampy\Repositories\ListRepository;
+use Stampy\SpamGuards\FriendlyCaptchaGuard;
 use Stampy\SpamGuards\QuizGuard;
+use Stampy\SpamGuards\TurnstileGuard;
 
 /**
  * Registers the Stampy Signup block and renders it server-side.
@@ -66,11 +68,15 @@ final class SignupBlock {
 		}
 
 		return array(
-			'restUrl'       => esc_url_raw( rest_url( 'stampy/v1' ) ),
-			'restNonce'     => wp_create_nonce( 'wp_rest' ),
-			'lists'         => $lists_formatted,
-			'consentText'   => $consent_text,
-			'quizQuestions' => QuizGuard::get_questions(),
+			'restUrl'                => esc_url_raw( rest_url( 'stampy/v1' ) ),
+			'restNonce'              => wp_create_nonce( 'wp_rest' ),
+			'lists'                  => $lists_formatted,
+			'consentText'            => $consent_text,
+			'quizQuestions'          => QuizGuard::get_questions(),
+			'turnstileEnabled'       => TurnstileGuard::is_enabled(),
+			'turnstileSiteKey'       => TurnstileGuard::get_site_key(),
+			'friendlyCaptchaEnabled' => FriendlyCaptchaGuard::is_enabled(),
+			'friendlyCaptchaSiteKey' => FriendlyCaptchaGuard::get_site_key(),
 		);
 	}
 
@@ -209,6 +215,26 @@ final class SignupBlock {
 					<input type="hidden" name="stampy_quiz_index" value="<?php echo esc_attr( (string) $quiz_index ); ?>" />
 				</p>
 				<?php endif; ?>
+
+			<?php if ( TurnstileGuard::is_enabled() ) : ?>
+				<?php
+				$turnstile_site_key = TurnstileGuard::get_site_key();
+				wp_enqueue_script( 'stampy-turnstile', 'https://challenges.cloudflare.com/turnstile/v0/api.js', array(), '1.0', true );
+				?>
+				<p class="stampy-signup-field stampy-signup-turnstile">
+					<div class="cf-turnstile" data-sitekey="<?php echo esc_attr( $turnstile_site_key ); ?>"></div>
+				</p>
+			<?php endif; ?>
+
+		<?php if ( FriendlyCaptchaGuard::is_enabled() ) : ?>
+			<?php
+			$fc_site_key = FriendlyCaptchaGuard::get_site_key();
+			wp_enqueue_script( 'stampy-friendly-captcha', 'https://cdn.jsdelivr.net/npm/@friendlycaptcha/[email protected]/site.min.js', array(), '0.2.0', true );
+			?>
+			<p class="stampy-signup-field stampy-signup-friendly-captcha">
+				<div class="frc-captcha" data-sitekey="<?php echo esc_attr( $fc_site_key ); ?>" data-start="auto"></div>
+			</p>
+		<?php endif; ?>
 
 			<p class="stampy-signup-field stampy-signup-honeypot" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;">
 					<label>

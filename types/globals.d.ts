@@ -27,6 +27,10 @@ declare global {
 		lists: StampyList[];
 		consentText: string;
 		quizQuestions?: StampyQuizQuestion[];
+		turnstileEnabled?: boolean;
+		turnstileSiteKey?: string;
+		friendlyCaptchaEnabled?: boolean;
+		friendlyCaptchaSiteKey?: string;
 		previewUrl?: string;
 		ajaxUrl?: string;
 		startSendNonce?: string;

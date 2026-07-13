@@ -43,10 +43,19 @@ final class SpamGuardChain {
 	/**
 	 * Run all guards in order. Stops at the first failure.
 	 *
+	 * If the chain was built via `default_chain()` and no custom guards
+	 * were added, guards are evaluated lazily so that option changes
+	 * (e.g. quiz questions configured after service construction) take
+	 * effect immediately.
+	 *
 	 * @param array<mixed> $request Signup request data.
 	 * @return SpamGuardResult The first failing result, or a pass.
 	 */
 	public function check( array $request ): SpamGuardResult {
+		if ( $this->use_default ) {
+			$this->guards = $this->build_default_guards();
+		}
+
 		foreach ( $this->guards as $guard ) {
 			$result = $guard->check( $request );
 			if ( ! $result->passed() ) {
@@ -58,26 +67,52 @@ final class SpamGuardChain {
 	}
 
 	/**
+	 * Whether the chain should lazily rebuild from defaults on next check.
+	 *
+	 * @var bool
+	 */
+	private bool $use_default = false;
+
+	/**
+	 * Build the default guard list (lazy, respects current option state).
+	 *
+	 * @return array<int, SpamGuardInterface>
+	 */
+	private function build_default_guards(): array {
+		$guards   = array();
+		$guards[] = new HoneypotGuard();
+
+		if ( apply_filters( 'stampy_rate_limit_enabled', true ) ) {
+			$guards[] = new RateLimitGuard();
+		}
+
+		if ( QuizGuard::is_enabled() ) {
+			$guards[] = new QuizGuard();
+		}
+
+		if ( TurnstileGuard::is_enabled() ) {
+			$guards[] = new TurnstileGuard();
+		}
+
+		if ( FriendlyCaptchaGuard::is_enabled() ) {
+			$guards[] = new FriendlyCaptchaGuard();
+		}
+
+		return $guards;
+	}
+
+	/**
 	 * Build the default guard chain with v1's built-in guards.
 	 *
-	 * The rate-limit guard can be disabled via the
-	 * `stampy_rate_limit_enabled` filter (returns false to disable).
-	 * The quiz guard is only added when quiz questions are configured.
+	 * The chain is built lazily on the first `check()` call so that
+	 * option changes (e.g. quiz questions configured after service
+	 * construction) take effect immediately.
 	 *
 	 * @return self
 	 */
 	public static function default_chain(): self {
-		$chain = new self();
-		$chain->add( new HoneypotGuard() );
-
-		if ( apply_filters( 'stampy_rate_limit_enabled', true ) ) {
-			$chain->add( new RateLimitGuard() );
-		}
-
-		if ( QuizGuard::is_enabled() ) {
-			$chain->add( new QuizGuard() );
-		}
-
+		$chain              = new self();
+		$chain->use_default = true;
 		return $chain;
 	}
 }

@@ -12,6 +12,8 @@ namespace Stampy\Admin;
 use Stampy\Smtp\SmtpSettings;
 use Stampy\Smtp\SmtpTransport;
 use Stampy\SpamGuards\QuizGuard;
+use Stampy\SpamGuards\FriendlyCaptchaGuard;
+use Stampy\SpamGuards\TurnstileGuard;
 use Stampy\Tracking\TrackingSettings;
 
 /**
@@ -144,6 +146,32 @@ final class SettingsPage {
 			</tr>
 		</table>
 
+		<h2><?php esc_html_e( 'Cloudflare Turnstile', 'stampy' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="turnstile_site_key"><?php esc_html_e( 'Site Key', 'stampy' ); ?></label></th>
+				<td><input type="text" name="turnstile_site_key" id="turnstile_site_key" class="regular-text" value="<?php echo esc_attr( TurnstileGuard::get_site_key() ); ?>" placeholder="0x4AAAAAAA..." /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="turnstile_secret_key"><?php esc_html_e( 'Secret Key', 'stampy' ); ?></label></th>
+				<td><input type="password" name="turnstile_secret_key" id="turnstile_secret_key" class="regular-text" value="<?php echo esc_attr( get_option( 'stampy_turnstile_secret_key', '' ) ); ?>" placeholder="0x4AAAAAAA..." autocomplete="new-password" />
+				<p class="description"><?php esc_html_e( 'Get your keys at cloudflare.com/products/turnstile. Leave empty to disable.', 'stampy' ); ?></p></td>
+			</tr>
+		</table>
+
+		<h2><?php esc_html_e( 'Friendly Captcha', 'stampy' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="friendly_captcha_site_key"><?php esc_html_e( 'Site Key', 'stampy' ); ?></label></th>
+				<td><input type="text" name="friendly_captcha_site_key" id="friendly_captcha_site_key" class="regular-text" value="<?php echo esc_attr( FriendlyCaptchaGuard::get_site_key() ); ?>" placeholder="FC..." /></td>
+			</tr>
+			<tr>
+				<th scope="row"><label for="friendly_captcha_secret_key"><?php esc_html_e( 'Secret Key', 'stampy' ); ?></label></th>
+				<td><input type="password" name="friendly_captcha_secret_key" id="friendly_captcha_secret_key" class="regular-text" value="<?php echo esc_attr( get_option( 'stampy_friendly_captcha_secret_key', '' ) ); ?>" placeholder="..." autocomplete="new-password" />
+				<p class="description"><?php esc_html_e( 'Get your keys at friendlycaptcha.com. Leave empty to disable.', 'stampy' ); ?></p></td>
+			</tr>
+		</table>
+
 		<h2><?php esc_html_e( 'Compliance', 'stampy' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
@@ -237,6 +265,17 @@ final class SettingsPage {
 		$quiz_questions = isset( $_POST['quiz_questions'] ) ? sanitize_textarea_field( wp_unslash( $_POST['quiz_questions'] ) ) : '';
 		// phpcs:enable
 		update_option( 'stampy_quiz_questions', $quiz_questions, true );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$turnstile_site_key   = isset( $_POST['turnstile_site_key'] ) ? sanitize_text_field( wp_unslash( $_POST['turnstile_site_key'] ) ) : '';
+		$turnstile_secret_key = isset( $_POST['turnstile_secret_key'] ) ? sanitize_text_field( wp_unslash( $_POST['turnstile_secret_key'] ) ) : '';
+		$fc_site_key          = isset( $_POST['friendly_captcha_site_key'] ) ? sanitize_text_field( wp_unslash( $_POST['friendly_captcha_site_key'] ) ) : '';
+		$fc_secret_key        = isset( $_POST['friendly_captcha_secret_key'] ) ? sanitize_text_field( wp_unslash( $_POST['friendly_captcha_secret_key'] ) ) : '';
+		// phpcs:enable
+		update_option( 'stampy_turnstile_site_key', $turnstile_site_key, true );
+		update_option( 'stampy_turnstile_secret_key', $turnstile_secret_key, true );
+		update_option( 'stampy_friendly_captcha_site_key', $fc_site_key, true );
+		update_option( 'stampy_friendly_captcha_secret_key', $fc_secret_key, true );
 
 		wp_safe_redirect(
 			add_query_arg(
