@@ -27,6 +27,9 @@ const consentText: string =
 		'stampy'
 	);
 
+const quizQuestions: { question: string; answer: string }[] =
+	( typeof window !== 'undefined' && window.stampy?.quizQuestions ) || [];
+
 export default function Edit( {
 	attributes,
 	setAttributes,
@@ -170,6 +173,24 @@ export default function Edit( {
 							</span>
 						</label>
 					</p>
+					{ quizQuestions.length > 0 && (
+						<p className="stampy-signup-field stampy-signup-quiz">
+							<label htmlFor="stampy-quiz">
+								{ quizQuestions[ 0 ].question }
+								<span aria-hidden="true" className="required">
+									{ ' *' }
+								</span>
+							</label>
+							<input
+								type="text"
+								id="stampy-quiz"
+								name="stampy_quiz_answer"
+								className="stampy-signup-input"
+								required
+								aria-required="true"
+							/>
+						</p>
+					) }
 					<p
 						className="stampy-signup-field stampy-signup-honeypot"
 						aria-hidden="true"

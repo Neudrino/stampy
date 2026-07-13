@@ -16,11 +16,17 @@ declare global {
 		description: string;
 	}
 
+	interface StampyQuizQuestion {
+		question: string;
+		answer: string;
+	}
+
 	interface StampyGlobal {
 		restUrl: string;
 		restNonce: string;
 		lists: StampyList[];
 		consentText: string;
+		quizQuestions?: StampyQuizQuestion[];
 		previewUrl?: string;
 		ajaxUrl?: string;
 		startSendNonce?: string;

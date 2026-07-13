@@ -68,6 +68,11 @@ $stampy_options = array(
 	'stampy_hmac_secret',
 	'stampy_physical_address',
 	'stampy_tracking_enabled',
+	'stampy_quiz_questions',
+	'stampy_turnstile_site_key',
+	'stampy_turnstile_secret_key',
+	'stampy_friendly_captcha_site_key',
+	'stampy_friendly_captcha_secret_key',
 );
 
 foreach ( $stampy_options as $stampy_option ) {

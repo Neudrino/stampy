@@ -11,6 +11,7 @@ namespace Stampy\Admin;
 
 use Stampy\Smtp\SmtpSettings;
 use Stampy\Smtp\SmtpTransport;
+use Stampy\SpamGuards\QuizGuard;
 use Stampy\Tracking\TrackingSettings;
 
 /**
@@ -132,7 +133,18 @@ final class SettingsPage {
 				</tr>
 			</table>
 
-			<h2><?php esc_html_e( 'Compliance', 'stampy' ); ?></h2>
+			<h2><?php esc_html_e( 'Anti-Spam Quiz', 'stampy' ); ?></h2>
+		<table class="form-table" role="presentation">
+			<tr>
+				<th scope="row"><label for="quiz_questions"><?php esc_html_e( 'Quiz Questions', 'stampy' ); ?></label></th>
+				<td>
+					<textarea name="quiz_questions" id="quiz_questions" rows="5" class="large-text" placeholder="<?php esc_attr_e( 'What is 3 + 4?||7', 'stampy' ); ?>"><?php echo esc_textarea( (string) get_option( 'stampy_quiz_questions', '' ) ); ?></textarea>
+					<p class="description"><?php esc_html_e( 'One question per line, in the format: question||answer. When configured, a random question is shown in the signup form. Leave empty to disable the quiz challenge.', 'stampy' ); ?></p>
+				</td>
+			</tr>
+		</table>
+
+		<h2><?php esc_html_e( 'Compliance', 'stampy' ); ?></h2>
 			<table class="form-table" role="presentation">
 				<tr>
 					<th scope="row"><label for="physical_address"><?php esc_html_e( 'Physical Address', 'stampy' ); ?></label></th>
@@ -220,6 +232,11 @@ final class SettingsPage {
 
 		$delete_on_uninstall = isset( $_POST['delete_data_on_uninstall'] ) ? '1' : '0';
 		update_option( 'stampy_delete_data_on_uninstall', $delete_on_uninstall, true );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$quiz_questions = isset( $_POST['quiz_questions'] ) ? sanitize_textarea_field( wp_unslash( $_POST['quiz_questions'] ) ) : '';
+		// phpcs:enable
+		update_option( 'stampy_quiz_questions', $quiz_questions, true );
 
 		wp_safe_redirect(
 			add_query_arg(

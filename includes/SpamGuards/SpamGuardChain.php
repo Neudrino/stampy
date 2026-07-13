@@ -62,6 +62,7 @@ final class SpamGuardChain {
 	 *
 	 * The rate-limit guard can be disabled via the
 	 * `stampy_rate_limit_enabled` filter (returns false to disable).
+	 * The quiz guard is only added when quiz questions are configured.
 	 *
 	 * @return self
 	 */
@@ -71,6 +72,10 @@ final class SpamGuardChain {
 
 		if ( apply_filters( 'stampy_rate_limit_enabled', true ) ) {
 			$chain->add( new RateLimitGuard() );
+		}
+
+		if ( QuizGuard::is_enabled() ) {
+			$chain->add( new QuizGuard() );
 		}
 
 		return $chain;

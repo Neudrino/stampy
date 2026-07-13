@@ -48,7 +48,12 @@ if ( ! is_readable( $stampy_autoload ) ) {
 require_once $stampy_autoload;
 
 if ( ! $stampy_force_integration ) {
-	// Unit-only run: nothing more to load.
+	// Unit-only run: define ABSPATH so that class files with
+	// `if ( ! defined( 'ABSPATH' ) ) { exit; }` guards don't kill
+	// the process when the autoloader loads them.
+	if ( ! defined( 'ABSPATH' ) ) {
+		define( 'ABSPATH', dirname( __DIR__, 2 ) );
+	}
 	return;
 }
 
