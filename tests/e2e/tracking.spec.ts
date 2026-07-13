@@ -102,7 +102,7 @@ test.describe.serial( 'Tracking', () => {
 			$post_id = wp_insert_post( array(
 				"post_type" => "stampy_campaign",
 				"post_title" => "Tracking E2E",
-				"post_content" => "<!-- wp:paragraph --><p>Hello {first_name}! <a href=\\"https://example.com/target\\">Click here</a></p><!-- /wp:paragraph -->",
+				"post_content" => "<!-- wp:paragraph --><p>Hello {field:first_name}! <a href=\\"https://example.com/target\\">Click here</a></p><!-- /wp:paragraph -->",
 				"post_status" => "publish",
 			) );
 			update_post_meta( $post_id, "stampy_campaign_subject", "${ escapedSubject }" );

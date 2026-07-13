@@ -118,7 +118,7 @@ final class SendingEngineTest extends WP_UnitTestCase {
 		$this->create_subscriber( 'bob@example.com', 'Bob' );
 
 		$campaign_id = $this->create_campaign(
-			'<!-- wp:paragraph --><p>Hello {first_name}!</p><!-- /wp:paragraph -->',
+			'<!-- wp:paragraph --><p>Hello {field:first_name}!</p><!-- /wp:paragraph -->',
 			'Test Subject'
 		);
 
@@ -136,7 +136,7 @@ final class SendingEngineTest extends WP_UnitTestCase {
 
 		$html = get_post_meta( $campaign_id, SendingEngine::META_HTML_SNAPSHOT, true );
 		$this->assertNotEmpty( $html );
-		$this->assertStringContainsString( 'Hello {first_name}!', $html );
+		$this->assertStringContainsString( 'Hello {field:first_name}!', $html );
 
 		$text = get_post_meta( $campaign_id, SendingEngine::META_TEXT_SNAPSHOT, true );
 		$this->assertNotEmpty( $text );
@@ -199,7 +199,7 @@ final class SendingEngineTest extends WP_UnitTestCase {
 		$this->create_subscriber( 'carol@example.com', 'Carol' );
 
 		$campaign_id = $this->create_campaign(
-			'<!-- wp:paragraph --><p>Hi {first_name}, your email is {email}.</p><!-- /wp:paragraph -->',
+			'<!-- wp:paragraph --><p>Hi {field:first_name}, your email is {email}.</p><!-- /wp:paragraph -->',
 			'Newsletter'
 		);
 
@@ -277,7 +277,7 @@ final class SendingEngineTest extends WP_UnitTestCase {
 		$this->create_subscriber( 'alice@example.com', 'Alice' );
 
 		$campaign_id = $this->create_campaign(
-			'<!-- wp:paragraph --><p>Hello {first_name}!</p><!-- /wp:paragraph -->',
+			'<!-- wp:paragraph --><p>Hello {field:first_name}!</p><!-- /wp:paragraph -->',
 			'Test'
 		);
 
@@ -340,12 +340,12 @@ final class SendingEngineTest extends WP_UnitTestCase {
 
 		$registry = new MergeTagRegistry();
 
-		$content = 'Hello {first_name} {field:last_name}! Your email is {email}.';
+		$content = 'Hello {field:first_name} {field:last_name}! Your email is {email}.';
 		$result  = $registry->replace( $content, $subscriber_id, 1 );
 
 		$this->assertStringContainsString( 'Alice Smith', $result );
 		$this->assertStringContainsString( 'alice@example.com', $result );
-		$this->assertStringNotContainsString( '{first_name}', $result );
+		$this->assertStringNotContainsString( '{field:first_name}', $result );
 		$this->assertStringNotContainsString( '{field:last_name}', $result );
 		$this->assertStringNotContainsString( '{email}', $result );
 	}
@@ -549,7 +549,7 @@ final class SendingEngineTest extends WP_UnitTestCase {
 		}
 
 		$campaign_id = $this->create_campaign(
-			'<!-- wp:paragraph --><p>Hi {first_name}!</p><!-- /wp:paragraph -->',
+			'<!-- wp:paragraph --><p>Hi {field:first_name}!</p><!-- /wp:paragraph -->',
 			'Test'
 		);
 

@@ -119,16 +119,19 @@ class FieldRepository {
 		?array $validation = null,
 		bool $show_in_admin = true
 	): int {
-		$wpdb = $this->wpdb;
+		$wpdb            = $this->wpdb;
+		$options_json    = null !== $options ? false !== wp_json_encode( $options ) ? wp_json_encode( $options ) : '' : null;
+		$validation_json = null !== $validation ? false !== wp_json_encode( $validation ) ? wp_json_encode( $validation ) : '' : null;
+
 		$wpdb->insert(
 			$this->table(),
 			array(
 				'field_key'     => $key,
 				'label'         => $label,
 				'type'          => $type,
-				'options'       => null !== $options ? wp_json_encode( $options ) : null,
+				'options'       => $options_json,
 				'required'      => $required ? 1 : 0,
-				'validation'    => null !== $validation ? wp_json_encode( $validation ) : null,
+				'validation'    => $validation_json,
 				'show_in_admin' => $show_in_admin ? 1 : 0,
 				'created_at'    => current_time( 'mysql', true ),
 			),
@@ -153,6 +156,50 @@ class FieldRepository {
 		return (bool) $wpdb->delete(
 			$this->table(),
 			array( 'id' => $id ),
+			array( '%d' )
+		);
+	}
+
+	/**
+	 * Update an existing field definition.
+	 *
+	 * @param int               $id          Field ID.
+	 * @param string            $key         Field key (unique).
+	 * @param string            $label       Human-readable label.
+	 * @param string            $type        Field type (text|textarea|number|date|select|checkbox).
+	 * @param array<mixed>|null $options     Optional options (for select/checkbox).
+	 * @param bool              $required    Whether the field is required.
+	 * @param array<mixed>|null $validation  Optional validation rules.
+	 * @param bool              $show_in_admin Whether the field shows in admin.
+	 * @return bool True on success.
+	 */
+	public function update(
+		int $id,
+		string $key,
+		string $label,
+		string $type = 'text',
+		?array $options = null,
+		bool $required = false,
+		?array $validation = null,
+		bool $show_in_admin = true
+	): bool {
+		$wpdb            = $this->wpdb;
+		$options_json    = null !== $options ? false !== wp_json_encode( $options ) ? wp_json_encode( $options ) : '' : null;
+		$validation_json = null !== $validation ? false !== wp_json_encode( $validation ) ? wp_json_encode( $validation ) : '' : null;
+
+		return (bool) $wpdb->update(
+			$this->table(),
+			array(
+				'field_key'     => $key,
+				'label'         => $label,
+				'type'          => $type,
+				'options'       => $options_json,
+				'required'      => $required ? 1 : 0,
+				'validation'    => $validation_json,
+				'show_in_admin' => $show_in_admin ? 1 : 0,
+			),
+			array( 'id' => $id ),
+			array( '%s', '%s', '%s', '%s', '%d', '%s', '%d' ),
 			array( '%d' )
 		);
 	}
