@@ -1754,3 +1754,89 @@ Status: **COMPLETE** ✓
   and answer (not `|` or `=`), because `|` is common in questions (e.g.
   "Is the sky blue or gray | red?") and `=` could appear in math questions.
 
+---
+
+## Phase 12 — Third-Party Spam Guards (Turnstile + Friendly Captcha)
+
+Status: **COMPLETE** ✓
+
+### Requirements (from PLAN.md §9 Phase 12)
+
+- [x] Cloudflare Turnstile integration via `SpamGuardInterface`
+- [x] Friendly Captcha integration via `SpamGuardInterface`
+- [x] Admin settings for provider selection, site key, and secret key
+- [x] Frontend renders the provider's widget in the signup form
+- [x] Backend verifies the token/solution on submit via server-side HTTP call
+- [x] Both purely additive — plug into the existing `SpamGuardChain`
+- [x] Unit tests (guard pass/fail with mocked HTTP verification)
+- [x] Integration tests (signup rejected on invalid/missing token, accepted on valid token)
+
+### Verification targets
+- [x] `npm run validate:fast` green (52 unit PHP, 24 JS)
+- [x] `npm run test:integration:php` green (212 tests, +6 new)
+- [x] `npm run test:e2e` green (20 tests)
+
+### What was done
+- **`includes/SpamGuards/TurnstileGuard.php`** — Cloudflare Turnstile
+  spam guard. Verifies the Turnstile token via Cloudflare's
+  `siteverify` API (`wp_remote_post`). When no secret key is configured,
+  the guard passes (disabled). Exposes `TurnstileGuard::is_enabled()`
+  and `TurnstileGuard::get_site_key()`.
+- **`includes/SpamGuards/FriendlyCaptchaGuard.php`** — Friendly Captcha
+  spam guard. Verifies the solution via Friendly Captcha's `siteverify`
+  API. Same pattern as TurnstileGuard.
+- **`includes/SpamGuards/SpamGuardChain.php`** — `default_chain()` now
+  uses lazy evaluation: guards are rebuilt on every `check()` call when
+  the chain was built via `default_chain()`. This ensures option changes
+  (e.g. configuring Turnstile after the service was constructed) take
+  effect immediately without needing to re-create the service.
+- **`includes/Admin/SettingsPage.php`** — added "Cloudflare Turnstile"
+  and "Friendly Captcha" settings sections (site key + secret key each).
+- **`includes/Rest/SignupController.php`** — added `stampy_turnstile_token`
+  and `stampy_friendly_captcha_solution` REST parameters.
+- **`includes/SignupBlock.php`** — renders Turnstile widget (`<div class="cf-turnstile">`)
+  and Friendly Captcha widget (`<div class="frc-captcha">`) when enabled.
+  Enqueues the external provider scripts. Passes captcha config in
+  localized data.
+- **`src/blocks/signup/view.ts`** — reads Turnstile token from
+  `[name="cf-turnstile-response"]` hidden input and Friendly Captcha
+  solution from `[name="frc-captcha-solution"]` hidden input, sends them
+  in the API request.
+- **`types/globals.d.ts`** — added `turnstileEnabled`, `turnstileSiteKey`,
+  `friendlyCaptchaEnabled`, `friendlyCaptchaSiteKey` fields.
+- **`uninstall.php`** — added Turnstile + Friendly Captcha options to
+  deleted options list.
+- **`tests/phpunit/Unit/CaptchaGuardTest.php`** — 14 unit tests:
+  Turnstile: pass when disabled, fail on missing/empty token, pass on
+  API success, fail on API failure, fail on WP_Error, is_enabled checks.
+  Friendly Captcha: same pattern.
+- **`tests/phpunit/Integration/CaptchaGuardTest.php`** — 6 integration
+  tests: signup succeeds when disabled, fails when Turnstile enabled but
+  no token, fails on invalid token, succeeds on valid token (mocked API),
+  fails when FC enabled but no solution, succeeds on valid FC solution.
+
+### Test counts
+- Jest: 24 (unchanged)
+- PHP unit: 52 (was 38, +14 CaptchaGuard tests)
+- PHP integration: 212 (was 206, +6 CaptchaGuard tests)
+- E2E: 20 (unchanged)
+- **Total: 308 tests**
+
+### Gotchas discovered
+- **`SpamGuardChain::default_chain()` must be lazy** — the
+  `SignupController` is registered on `rest_api_init` and creates a
+  `SignupService` with `SpamGuardChain::default_chain()`. The REST
+  server is initialized once and cached. If the chain was built eagerly
+  (checking `QuizGuard::is_enabled()` at construction time), option
+  changes made after service construction (e.g. in a test's `setUp()`)
+  would not take effect. Fix: the chain rebuilds its guard list on every
+  `check()` call when built via `default_chain()`.
+- **External script version** — `wp_enqueue_script()` for external
+  provider scripts (Turnstile, Friendly Captcha) triggers
+  `WordPress.WP.EnqueuedResourceParameters.MissingVersion` when `null`
+  is passed as version. Use a string version (e.g. `'1.0'`) instead.
+- **`pre_http_request` filter for mocking HTTP in integration tests** —
+  use `add_filter('pre_http_request', ...)` with a callback that checks
+  the URL and returns a mock response array. Must `remove_filter` in
+  `tearDown()` or after the test to avoid leaking to other tests.
+
