@@ -2,9 +2,9 @@
 /**
  * Merge-tag registry for campaign personalization.
  *
- * Replaces merge tags ({email}, {unsubscribe_url}, {first_name},
- * {field:*}) at send time on a per-recipient basis. The registry is
- * extensible via the `stampy_merge_tags` filter.
+ * Replaces merge tags ({email}, {unsubscribe_url}, {field:*}) in campaign content.
+ * At send time, per-recipient values are substituted from subscriber meta.
+ * The registry is extensible via the `stampy_merge_tags` filter.
  *
  * @package Stampy
  */
@@ -92,8 +92,6 @@ final class MergeTagRegistry {
 		$values = array(
 			'email'           => (string) $subscriber->email,
 			'unsubscribe_url' => $this->build_unsubscribe_url( (int) $subscriber->id ),
-			'first_name'      => (string) ( $meta['first_name'] ?? '' ),
-			'last_name'       => (string) ( $meta['last_name'] ?? '' ),
 		);
 
 		foreach ( $meta as $key => $value ) {
