@@ -1671,3 +1671,86 @@ Root causes and fixes:
   `tearDown()` cleanup, delta-based count assertions
 - `tests/phpunit/Integration/SignupEndpointTest.php` — added
   `tearDown()` cleanup, delta-based count assertions
+
+---
+
+## Phase 11 — Native Anti-Spam Quiz
+
+Status: **COMPLETE** ✓
+
+### Requirements (from PLAN.md §9 Phase 11)
+
+- [x] Configurable, accessible question/answer quiz (e.g. "What is 3 + 4?")
+- [x] Additional guard in the existing spam-guard pipeline
+- [x] Deliberately NOT an image CAPTCHA (WCAG failure, OCR-breakable)
+- [x] Admin settings for question/answer pairs
+- [x] Guard plugged into `SpamGuardChain`
+- [x] Unit tests (guard pass/fail, chain integration)
+- [x] Integration tests (signup rejected on wrong answer, accepted on correct)
+- [x] E2E (existing tests still pass with quiz disabled by default)
+
+### Verification targets
+- [x] `npm run validate:fast` green (38 unit PHP, 24 JS)
+- [x] `npm run test:integration:php` green (206 tests, +7 new)
+- [x] `npm run test:e2e` green (20 tests)
+
+### What was done
+- **`includes/SpamGuards/QuizGuard.php`** — new spam guard implementing
+  `SpamGuardInterface`. Reads question/answer pairs from the
+  `stampy_quiz_questions` option (one per line, format: `question||answer`).
+  When no questions are configured, the guard passes (disabled). When
+  configured, the signup form renders a random question and the guard
+  verifies the answer (case-insensitive, whitespace-normalized).
+  Exposes `QuizGuard::get_questions()`, `QuizGuard::is_enabled()`, and
+  constants `ANSWER_KEY` / `INDEX_KEY` for form integration.
+- **`includes/SpamGuards/SpamGuardChain.php`** — `default_chain()` now
+  adds `QuizGuard` when `QuizGuard::is_enabled()` returns true.
+- **`includes/Admin/SettingsPage.php`** — added "Anti-Spam Quiz" section
+  with a textarea for question/answer pairs (format instructions included).
+  Saves to `stampy_quiz_questions` option.
+- **`includes/Rest/SignupController.php`** — added `stampy_quiz_answer`
+  and `stampy_quiz_index` REST parameters.
+- **`includes/SignupBlock.php`** — renders quiz field (random question +
+  hidden index) when questions are configured. Passes `quizQuestions` in
+  localized data for the block editor preview.
+- **`src/blocks/signup/view.ts`** — sends `stampy_quiz_answer` and
+  `stampy_quiz_index` in the API request when present.
+- **`src/blocks/signup/edit.tsx`** — shows quiz preview when configured.
+- **`types/globals.d.ts`** — added `StampyQuizQuestion` interface and
+  `quizQuestions` field on `StampyGlobal`.
+- **`uninstall.php`** — added `stampy_quiz_questions` to deleted options.
+- **`tests/phpunit/Unit/QuizGuardTest.php`** — 12 unit tests: pass when
+  disabled, fail on empty/wrong/missing answer, pass on correct answer,
+  case-insensitive, whitespace normalized, index out of bounds, chain
+  integration, result factories.
+- **`tests/phpunit/Integration/QuizGuardTest.php`** — 7 integration tests:
+  correct answer succeeds, wrong answer fails, empty answer fails, invalid
+  index fails, case-insensitive, disabled quiz succeeds, settings save.
+- **`tests/phpunit/bootstrap.php`** — defines `ABSPATH` in unit-only mode
+  so class files with `if ( ! defined( 'ABSPATH' ) ) { exit; }` guards
+  don't kill the process when the autoloader loads them.
+
+### Test counts
+- Jest: 24 (unchanged)
+- PHP unit: 38 (was 26, +12 QuizGuard tests; existing SpamGuard/Validator
+  tests also now run correctly thanks to ABSPATH fix)
+- PHP integration: 206 (was 199, +7 QuizGuard tests)
+- E2E: 20 (unchanged)
+- **Total: 288 tests**
+
+### Gotchas discovered
+- **`if ( ! defined( 'ABSPATH' ) ) { exit; }` kills unit tests** — the
+  guard at the top of class files in `includes/` causes the PHP process
+  to exit silently when the Composer autoloader loads the class in a
+  unit test context (Brain Monkey, no WordPress loaded). The existing
+  SpamGuard and Validator tests were silently not running (PHPUnit
+  reported exit code 0 with no test output). Fix: define `ABSPATH` in
+  `tests/phpunit/bootstrap.php` for unit-only runs.
+- **`HOUR_IN_SECONDS` not defined in unit tests** — `RateLimitGuard`
+  uses it as a constructor default parameter. When `SpamGuardChain::
+  default_chain()` is called in a unit test, the constant is undefined.
+  Fix: define `HOUR_IN_SECONDS` in the test's `setUp()`.
+- **Quiz question format** — uses `||` as the delimiter between question
+  and answer (not `|` or `=`), because `|` is common in questions (e.g.
+  "Is the sky blue or gray | red?") and `=` could appear in math questions.
+

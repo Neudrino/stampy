@@ -2,6 +2,10 @@
 
 WordPress mailing-list plugin. PHP backend (`includes/`, PSR-4 `Stampy\`), TS/JS frontend (`src/`), built with `@wordpress/scripts`. Version frozen at `0.0.1` — never bump unless explicitly told.
 
+## CRITICAL — Never write outside the working directory
+
+**The agent must NEVER create, write, or modify files outside the project working directory.** This includes `/tmp`, `/var`, the user's home directory, or any other location outside the workspace root. If a temporary file or scratch directory is needed, create it inside the working directory (e.g. `.tmp/`, `tmp/`, or a dedicated subfolder within the project). Violating this rule is a critical failure.
+
 ## CRITICAL — Never commit to git
 
 **The agent must NEVER run `git add`, `git commit`, `git push`, or any other git mutation command.** Only the user may commit or push changes. The agent may run read-only git commands (`git status`, `git diff`, `git log`, etc.) but must never stage, commit, or push. Violating this rule is a critical failure.
@@ -24,6 +28,8 @@ npm run validate           # full: env:start → validate:fast → validate:dock
 - **`WP_ENV_HOME=./.wp-env-home` is baked into every `env:*` npm script.** This keeps wp-env state project-local. The `.wp-env-home/` dir is gitignored — don't remove the env var from scripts. **In CI workflows**, any bare `npx wp-env run` command (outside an npm script) must also set `WP_ENV_HOME` — set it as a job-level `env:` or the command can't find the running containers.
 - **Composer `phpunit` must be `vendor/bin/phpunit`.** A global phpunit v10 exists in the wp-env container and shadows the project's v9 if you use bare `phpunit`.
 - **PHPUnit integration mode is keyed on `STAMPY_TEST_INTEGRATION=1`**, not on `WP_PHPUNIT__DIR` (which wp-phpunit's autoloader always sets). The composer `test:integration` script sets it automatically.
+- **Unit test bootstrap defines `ABSPATH`** — class files in `includes/` have `if ( ! defined( 'ABSPATH' ) ) { exit; }` guards. Without `ABSPATH` defined, the autoloader silently kills the PHP process when loading these classes in unit tests (Brain Monkey, no WP). The bootstrap defines it for unit-only runs. When writing unit tests that use `Stampy\*` classes, ensure Brain Monkey stubs for any WP functions the class calls (e.g. `get_option`, `__`, `sanitize_text_field`).
+- **`HOUR_IN_SECONDS` not defined in unit tests** — `RateLimitGuard` uses it as a constructor default. When `SpamGuardChain::default_chain()` is called in unit tests, define `HOUR_IN_SECONDS` in `setUp()`.
 - **After adding PHP classes**, run `composer dump-autoload` in the container to regenerate the PSR-4 autoloader.
 - **PHPCS `InterpolatedNotPrepared`** — table names in `$wpdb->prepare()` queries trigger this sniff. Use `phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared` ... `phpcs:enable` blocks around the query (NOT `// phpcs:ignore` on a separate line — that only covers the current line).
 - **PHPCS `DisallowShortTernary`** — `$row ?: null` is forbidden. Use `null !== $row ? $row : null`.
