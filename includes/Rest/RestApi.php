@@ -40,5 +40,6 @@ final class RestApi {
 		( new ConfirmController() )->register_routes();
 		( new UnsubscribeController() )->register_routes();
 		( new PreferencesController() )->register_routes();
+		( new ImportExportController() )->register_routes();
 	}
 }

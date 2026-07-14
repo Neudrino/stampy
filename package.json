@@ -50,5 +50,9 @@
 		"@wordpress/blocks": "^15.0.0",
 		"@wordpress/components": "^30.0.0",
 		"@wordpress/i18n": "^6.0.0"
+	},
+	"dependencies": {
+		"@types/papaparse": "^5.5.2",
+		"papaparse": "^5.5.4"
 	}
 }

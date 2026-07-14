@@ -102,6 +102,17 @@ final class AdminMenu {
 			array( SettingsPage::class, 'render' )
 		);
 
+		$ie_hook = add_submenu_page(
+			'stampy-subscribers',
+			__( 'Import / Export', 'stampy' ),
+			__( 'Import / Export', 'stampy' ),
+			'manage_options',
+			'stampy-import-export',
+			array( ImportExportPage::class, 'render' )
+		);
+
+		add_action( 'admin_enqueue_scripts', array( ImportExportPage::class, 'enqueue_assets' ) );
+
 		add_action( 'load-' . $hook, array( SubscribersPage::class, 'setup_screen' ) );
 		add_action( 'load-' . $hook, array( SubscribersListTable::class, 'handle_bulk_action' ) );
 	}
