@@ -2041,3 +2041,32 @@ Status: **COMPLETE** ✓
   treats as failures.
 - Total test count: 72 unit PHP, 25 JS, 241 integration, 20 E2E = 358.
 
+### Phase 14 — List management & campaign improvements
+- **Subscriber list filter by list membership:** Added a `list_id` filter
+  dropdown to `SubscribersListTable::extra_tablenav()` (next to the
+  existing status filter). `SubscriberRepository::get_all()` and
+  `count_filtered()` now accept a `list_id` arg — when set, they JOIN to
+  the `subscriber_lists` junction table and filter by `list_id` +
+  `status='subscribed'`. Column references in the WHERE clause use `s.`
+  alias prefix when the JOIN is present to avoid ambiguity.
+- **Prominent count display:** Added a `<span class="subtitle">` next to
+  the subscribers heading showing the total subscriber count (e.g.
+  "(42 total)"), using `number_format_i18n()` for locale-aware formatting.
+- **Campaign duplication:** Added a "Copy" row action to the campaign CPT
+  list table (via `post_row_actions` filter in
+  `CampaignSendPage::add_row_action()`). The handler
+  (`CampaignCopyPage::handle_copy_campaign()`) creates a new draft
+  campaign via `wp_insert_post()`, copies subject, list IDs, and tracking
+  override — but NOT sending meta (snapshots, started_at, completed_at).
+  The copy title gets "(Copy)" appended. Redirects to the block editor
+  for the new copy.
+- **Form method fix:** Changed the subscribers list form from
+  `method="post"` to `method="get"` so filter dropdown values appear in
+  the URL query string (where `prepare_items()` reads them via `$_GET`).
+- **Test coverage:** 8 integration tests (PhaseFourteenTest.php — list
+  filter, count, campaign copy with content/subject/lists, sending meta
+  exclusion, tracking override copy), 4 E2E tests (phase-14.spec.ts —
+  filter dropdown present, filtering by list, count display, campaign
+  copy row action). Total: 72 unit PHP, 25 JS, 248 integration, 24 E2E
+  = 369 tests.
+

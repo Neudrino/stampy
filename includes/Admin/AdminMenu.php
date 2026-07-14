@@ -36,6 +36,7 @@ final class AdminMenu {
 		add_action( 'admin_post_stampy_campaign_preview', array( CampaignPreviewPage::class, 'handle_preview' ) );
 		add_action( 'admin_post_stampy_start_send', array( CampaignSendPage::class, 'handle_start_send' ) );
 		add_action( 'admin_post_stampy_cancel_send', array( CampaignSendPage::class, 'handle_cancel_send' ) );
+		add_action( 'admin_post_stampy_copy_campaign', array( CampaignCopyPage::class, 'handle_copy_campaign' ) );
 		add_action( 'wp_ajax_stampy_campaign_progress', array( CampaignSendPage::class, 'handle_progress_ajax' ) );
 		add_action( 'wp_ajax_stampy_start_send', array( CampaignSendPage::class, 'handle_start_send_ajax' ) );
 		add_action( 'wp_ajax_stampy_cancel_send', array( CampaignSendPage::class, 'handle_cancel_send_ajax' ) );
