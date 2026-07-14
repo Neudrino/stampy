@@ -255,6 +255,7 @@ class SubscriberRepository {
 		$table   = $this->table();
 		$status  = isset( $args['status'] ) ? sanitize_key( $args['status'] ) : '';
 		$search  = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+		$list_id = isset( $args['list_id'] ) ? (int) $args['list_id'] : 0;
 		$perpage = max( 1, (int) ( $args['per_page'] ?? 20 ) );
 		$page    = max( 1, (int) ( $args['page'] ?? 1 ) );
 		$offset  = ( $page - 1 ) * $perpage;
@@ -263,30 +264,45 @@ class SubscriberRepository {
 		$orderby         = in_array( $args['orderby'] ?? 'created_at', $allowed_orderby, true ) ? ( $args['orderby'] ?? 'created_at' ) : 'created_at';
 		$order           = strtoupper( $args['order'] ?? 'DESC' ) === 'ASC' ? 'ASC' : 'DESC';
 
+		$join   = '';
 		$where  = '1=1';
 		$params = array();
 
+		if ( $list_id > 0 ) {
+			$junction = Schema::table( 'subscriber_lists', $wpdb );
+			$join    .= " INNER JOIN $junction sl ON sl.subscriber_id = s.id";
+			$where   .= ' AND sl.list_id = %d AND sl.status = %s';
+			$params[] = $list_id;
+			$params[] = 'subscribed';
+			// Use alias to avoid ambiguity.
+			$table = "$table s";
+		}
+
 		if ( '' !== $status && in_array( $status, array( 'pending', 'confirmed', 'unsubscribed' ), true ) ) {
-			$where   .= ' AND status = %s';
+			$col      = 0 === strpos( $table, $table ) && '' !== $join ? 's.status' : 'status';
+			$where   .= " AND $col = %s";
 			$params[] = $status;
 		}
 
 		if ( '' !== $search ) {
-			$where   .= ' AND email LIKE %s';
+			$col      = '' !== $join ? 's.email' : 'email';
+			$where   .= " AND $col LIKE %s";
 			$params[] = '%' . $wpdb->esc_like( $search ) . '%';
 		}
+
+		$order_col = '' !== $join ? "s.$orderby" : $orderby;
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		if ( count( $params ) > 0 ) {
 			$results = $wpdb->get_results(
 				$wpdb->prepare(
-					"SELECT * FROM $table WHERE $where ORDER BY $orderby $order LIMIT %d OFFSET %d",
+					"SELECT * FROM $table $join WHERE $where ORDER BY $order_col $order LIMIT %d OFFSET %d",
 					array_merge( $params, array( $perpage, $offset ) )
 				)
 			);
 		} else {
 			$results = $wpdb->get_results(
-				"SELECT * FROM $table WHERE $where ORDER BY $orderby $order LIMIT $perpage OFFSET $offset"
+				"SELECT * FROM $table $join WHERE $where ORDER BY $order_col $order LIMIT $perpage OFFSET $offset"
 			);
 		}
 		// phpcs:enable
@@ -305,29 +321,42 @@ class SubscriberRepository {
 	 * @return int
 	 */
 	public function count_filtered( array $args = array() ): int {
-		$wpdb   = $this->wpdb;
-		$table  = $this->table();
-		$status = isset( $args['status'] ) ? sanitize_key( $args['status'] ) : '';
-		$search = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+		$wpdb    = $this->wpdb;
+		$table   = $this->table();
+		$status  = isset( $args['status'] ) ? sanitize_key( $args['status'] ) : '';
+		$search  = isset( $args['search'] ) ? sanitize_text_field( $args['search'] ) : '';
+		$list_id = isset( $args['list_id'] ) ? (int) $args['list_id'] : 0;
 
+		$join   = '';
 		$where  = '1=1';
 		$params = array();
 
+		if ( $list_id > 0 ) {
+			$junction = Schema::table( 'subscriber_lists', $wpdb );
+			$join    .= " INNER JOIN $junction sl ON sl.subscriber_id = s.id";
+			$where   .= ' AND sl.list_id = %d AND sl.status = %s';
+			$params[] = $list_id;
+			$params[] = 'subscribed';
+			$table    = "$table s";
+		}
+
 		if ( '' !== $status && in_array( $status, array( 'pending', 'confirmed', 'unsubscribed' ), true ) ) {
-			$where   .= ' AND status = %s';
+			$col      = '' !== $join ? 's.status' : 'status';
+			$where   .= " AND $col = %s";
 			$params[] = $status;
 		}
 
 		if ( '' !== $search ) {
-			$where   .= ' AND email LIKE %s';
+			$col      = '' !== $join ? 's.email' : 'email';
+			$where   .= " AND $col LIKE %s";
 			$params[] = '%' . $wpdb->esc_like( $search ) . '%';
 		}
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		if ( count( $params ) > 0 ) {
-			$count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table WHERE $where", $params ) );
+			$count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM $table $join WHERE $where", $params ) );
 		} else {
-			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table WHERE $where" );
+			$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $table $join WHERE $where" );
 		}
 		// phpcs:enable
 

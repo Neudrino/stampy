@@ -132,8 +132,9 @@ class SubscribersListTable extends WP_List_Table {
 			$per_page = 20;
 		}
 
-		$search = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
-		$status = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '';
+		$search  = isset( $_GET['s'] ) ? sanitize_text_field( wp_unslash( $_GET['s'] ) ) : '';
+		$status  = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '';
+		$list_id = isset( $_GET['list_id'] ) ? (int) $_GET['list_id'] : 0;
 
 		$orderby = isset( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : 'created_at';
 		$order   = isset( $_GET['order'] ) ? sanitize_key( $_GET['order'] ) : 'desc';
@@ -156,6 +157,7 @@ class SubscribersListTable extends WP_List_Table {
 			'page'     => $paged,
 			'search'   => $search,
 			'status'   => $status,
+			'list_id'  => $list_id,
 			'orderby'  => $orderby,
 			'order'    => strtoupper( $order ),
 		);
@@ -169,8 +171,9 @@ class SubscribersListTable extends WP_List_Table {
 
 		$total = $this->subscribers->count_filtered(
 			array(
-				'status' => $status,
-				'search' => $search,
+				'status'  => $status,
+				'search'  => $search,
+				'list_id' => $list_id,
 			)
 		);
 
@@ -322,7 +325,9 @@ class SubscribersListTable extends WP_List_Table {
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
-		$current = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '';
+		$current   = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : '';
+		$list_id   = isset( $_GET['list_id'] ) ? (int) $_GET['list_id'] : 0;
+		$all_lists = $this->lists->all();
 		?>
 		<div class="alignleft actions">
 			<label for="filter-by-status" class="screen-reader-text"><?php esc_html_e( 'Filter by status', 'stampy' ); ?></label>
@@ -331,6 +336,13 @@ class SubscribersListTable extends WP_List_Table {
 				<option value="pending" <?php selected( $current, 'pending' ); ?>><?php esc_html_e( 'Pending', 'stampy' ); ?></option>
 				<option value="confirmed" <?php selected( $current, 'confirmed' ); ?>><?php esc_html_e( 'Confirmed', 'stampy' ); ?></option>
 				<option value="unsubscribed" <?php selected( $current, 'unsubscribed' ); ?>><?php esc_html_e( 'Unsubscribed', 'stampy' ); ?></option>
+			</select>
+			<label for="filter-by-list" class="screen-reader-text"><?php esc_html_e( 'Filter by list', 'stampy' ); ?></label>
+			<select name="list_id" id="filter-by-list">
+				<option value="0"<?php selected( $list_id, 0 ); ?>><?php esc_html_e( 'All lists', 'stampy' ); ?></option>
+				<?php foreach ( $all_lists as $list ) : ?>
+					<option value="<?php echo esc_attr( (string) $list->id ); ?>"<?php selected( $list_id, (int) $list->id ); ?>><?php echo esc_html( $list->name ); ?></option>
+				<?php endforeach; ?>
 			</select>
 			<?php submit_button( __( 'Filter', 'stampy' ), '', 'filter_action', false ); ?>
 		</div>
