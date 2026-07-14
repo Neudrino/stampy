@@ -40,7 +40,7 @@ class Schema {
 	 * Increment when a table definition changes. The migration runner compares
 	 * this against the stored `stampy_db_version` option.
 	 */
-	public const DB_VERSION = 2;
+	public const DB_VERSION = 4;
 
 	/**
 	 * Get the list of all Stampy table names (prefixed).
@@ -61,6 +61,7 @@ class Schema {
 			'subscriber_lists',
 			'campaign_recipients',
 			'campaign_clicks',
+			'submission_log',
 		);
 		$full   = array();
 		foreach ( $short as $name ) {
@@ -95,6 +96,7 @@ class Schema {
 		$charset = $wpdb->get_charset_collate();
 		$tables  = self::table_names( $wpdb );
 		$biguint = 'BIGINT UNSIGNED NOT NULL AUTO_INCREMENT';
+		$bigfk   = 'BIGINT UNSIGNED NOT NULL';
 		$sql     = array();
 
 		// phpcs:disable WordPress.DB.PreparedSQL -- dbDelta does not use prepared statements.
@@ -206,6 +208,24 @@ class Schema {
 			clicked_at DATETIME NOT NULL,
 			PRIMARY KEY  (id),
 			KEY recipient_id (recipient_id)
+		) {$charset};";
+
+		// submission_log.
+		$sql[] = "CREATE TABLE {$tables['submission_log']} (
+			id {$biguint},
+			subscriber_id {$bigfk},
+			email VARCHAR(255) NOT NULL,
+			form_data LONGTEXT,
+			list_ids VARCHAR(255) DEFAULT NULL,
+			form_id BIGINT UNSIGNED DEFAULT NULL,
+			consent_version INT UNSIGNED NOT NULL DEFAULT 1,
+			consent_text LONGTEXT,
+			status VARCHAR(20) NOT NULL DEFAULT 'pending',
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			KEY subscriber_id (subscriber_id),
+			KEY email (email),
+			KEY created_at (created_at)
 		) {$charset};";
 
 		// phpcs:enable WordPress.DB.PreparedSQL

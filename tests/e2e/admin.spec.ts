@@ -9,8 +9,44 @@
  */
 
 import { test, expect } from '@playwright/test';
+import { execSync } from 'child_process';
 
 const TESTS_URL = 'http://localhost:8889';
+
+function wpCli( command: string ): string {
+	let lastError: Error | null = null;
+	for ( let attempt = 0; attempt < 3; attempt++ ) {
+		try {
+			return execSync(
+				`WP_ENV_HOME=./.wp-env-home npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy ${ command }`,
+				{
+					encoding: 'utf-8',
+					timeout: 60_000,
+					stdio: [ 'pipe', 'pipe', 'pipe' ],
+				}
+			);
+		} catch ( e ) {
+			lastError = e instanceof Error ? e : new Error( String( e ) );
+			if ( attempt < 2 ) {
+				const start = Date.now();
+				while ( Date.now() - start < 2000 ) {
+					// busy wait
+				}
+			}
+		}
+	}
+	throw lastError;
+}
+
+function deleteSubscriber( email: string ): void {
+	wpCli(
+		`wp eval '
+		$repo = new \\Stampy\\Repositories\\SubscriberRepository();
+		$sub = $repo->find_by_email( "${ email }" );
+		if ( $sub ) { $repo->delete( (int) $sub->id ); }
+		'`
+	);
+}
 
 async function adminLogin(
 	page: import('@playwright/test').Page
@@ -101,6 +137,10 @@ test.describe( 'Admin subscribers/lists management', () => {
 	} );
 
 	test.describe.serial( 'bulk actions on subscribers', () => {
+		// Use a unique email per run so leftover state from a previous
+		// failed run doesn't pollute the search results.
+		const bulkEmail = `bulk-e2e-${ Date.now() }@stampy.local`;
+
 		test( 'bulk set confirmed changes subscriber status', async ( {
 			page,
 		} ) => {
@@ -112,7 +152,7 @@ test.describe( 'Admin subscribers/lists management', () => {
 				{
 					headers: { 'Content-Type': 'application/json' },
 					data: {
-						email: 'bulk-e2e@example.com',
+						email: bulkEmail,
 						fields: {
 							first_name: 'Bulk',
 							last_name: 'Tester',
@@ -130,11 +170,8 @@ test.describe( 'Admin subscribers/lists management', () => {
 			);
 
 			// Search for our subscriber.
-			await page.fill(
-				'#subscriber-search-input',
-				'bulk-e2e@example.com'
-			);
-			await page.click( '#search-submit' );
+			await page.fill( '#subscriber-search-input', bulkEmail );
+			await page.click( '#search-submit', { force: true } );
 			await page.waitForLoadState( 'networkidle' );
 
 			// Check the checkbox for the first (and only) row.
@@ -181,10 +218,7 @@ test.describe( 'Admin subscribers/lists management', () => {
 			} );
 
 			// Verify the subscriber status is now "Confirmed".
-			await page.fill(
-				'#subscriber-search-input',
-				'bulk-e2e@example.com'
-			);
+			await page.fill( '#subscriber-search-input', bulkEmail );
 			await page.click( '#search-submit', { force: true } );
 			await page.waitForLoadState( 'networkidle' );
 
@@ -204,11 +238,8 @@ test.describe( 'Admin subscribers/lists management', () => {
 			);
 
 			// Search for the subscriber created in the previous test.
-			await page.fill(
-				'#subscriber-search-input',
-				'bulk-e2e@example.com'
-			);
-			await page.click( '#search-submit' );
+			await page.fill( '#subscriber-search-input', bulkEmail );
+			await page.click( '#search-submit', { force: true } );
 			await page.waitForLoadState( 'networkidle' );
 
 			// Check the checkbox.
@@ -237,16 +268,14 @@ test.describe( 'Admin subscribers/lists management', () => {
 			);
 
 			// Apply.
-			await Promise.all( [
-				page.waitForNavigation( { timeout: 20000 } ),
-				page.click( '#doaction', { force: true } ),
-			] );
+			await page.click( '#doaction', { force: true } );
+			await page.waitForLoadState( 'domcontentloaded', {
+				timeout: 20000,
+			} );
+			await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
 
 			// Verify the subscriber status is now "Unsubscribed".
-			await page.fill(
-				'#subscriber-search-input',
-				'bulk-e2e@example.com'
-			);
+			await page.fill( '#subscriber-search-input', bulkEmail );
 			await page.click( '#search-submit', { force: true } );
 			await page.waitForLoadState( 'networkidle' );
 
@@ -254,6 +283,9 @@ test.describe( 'Admin subscribers/lists management', () => {
 				'.wp-list-table tbody tr:first-child td.column-status'
 			);
 			await expect( statusCell ).toContainText( 'Unsubscribed' );
+
+			// Cleanup so the test doesn't leak state.
+			deleteSubscriber( bulkEmail );
 		} );
 
 		test( 'first name and last name columns are visible', async ( {

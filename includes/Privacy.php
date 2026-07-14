@@ -12,6 +12,7 @@
  * - List memberships
  * - Campaign recipients (sent/opened/clicked timestamps)
  * - Campaign clicks (clicked URLs)
+ * - Submission log entries (form data, consent text, IP address)
  *
  * @package Stampy
  */
@@ -30,6 +31,7 @@ use Stampy\Repositories\SubscriberMetaRepository;
 use Stampy\Repositories\PendingSignupRepository;
 use Stampy\Repositories\ListRepository;
 use Stampy\Repositories\CampaignRecipientRepository;
+use Stampy\Repositories\SubmissionLogRepository;
 
 /**
  * Registers privacy exporters and erasers with WordPress core.
@@ -97,18 +99,67 @@ final class Privacy {
 	public static function export_data( string $email_address, int $page = 1 ): array {
 		$subscriber = self::find_subscriber( $email_address );
 
+		// All data fits in a single page; no pagination needed.
+		unset( $page );
+
+		$groups = array();
+
+		// Submission logs are tied to subscribers via subscriber_id and
+		// auto-deleted when the subscriber is deleted. Export them before
+		// the early return in case any orphaned entries remain.
+		$log_repo = new SubmissionLogRepository();
+		$logs     = $log_repo->find_by_email( $email_address );
+
+		if ( count( $logs ) > 0 ) {
+			$log_data = array();
+			foreach ( $logs as $log ) {
+				$form_data = json_decode( (string) ( $log->form_data ?? '{}' ), true );
+				$fields    = is_array( $form_data ) ? $form_data : array();
+
+				$row = array(
+					array(
+						'name'  => __( 'Status', 'stampy' ),
+						'value' => (string) $log->status,
+					),
+					array(
+						'name'  => __( 'Created', 'stampy' ),
+						'value' => (string) $log->created_at,
+					),
+					array(
+						'name'  => __( 'Consent Version', 'stampy' ),
+						'value' => (string) $log->consent_version,
+					),
+					array(
+						'name'  => __( 'Consent Text', 'stampy' ),
+						'value' => (string) ( $log->consent_text ?? '' ),
+					),
+				);
+
+				foreach ( $fields as $field_key => $field_value ) {
+					$row[] = array(
+						'name'  => __( 'Field: ', 'stampy' ) . $field_key,
+						'value' => is_array( $field_value ) ? (string) ( false !== wp_json_encode( $field_value ) ? wp_json_encode( $field_value ) : '' ) : (string) $field_value,
+					);
+				}
+
+				$log_data = array_merge( $log_data, $row );
+			}
+			$groups[] = array(
+				'group_id'    => 'stampy-submission-log',
+				'group_label' => __( 'Stampy: Submission Log', 'stampy' ),
+				'item_id'     => 'stampy-submission-log-' . md5( $email_address ),
+				'data'        => $log_data,
+			);
+		}
+
 		if ( null === $subscriber ) {
 			return array(
-				'data' => array(),
+				'data' => $groups,
 				'done' => true,
 			);
 		}
 
-		// All data fits in a single page; no pagination needed.
-		unset( $page );
-
-		$sid    = (int) $subscriber->id;
-		$groups = array();
+		$sid = (int) $subscriber->id;
 
 		// Group 1: Subscriber profile.
 		$profile_data = array(
@@ -337,11 +388,26 @@ final class Privacy {
 	public static function erase_data( string $email_address ): array {
 		$subscriber = self::find_subscriber( $email_address );
 
+		$messages = array();
+		$removed  = false;
+
+		// Delete submission log entries (may exist even without a subscriber).
+		$log_repo = new SubmissionLogRepository();
+		$deleted  = $log_repo->delete_by_email( $email_address );
+		if ( $deleted > 0 ) {
+			$removed    = true;
+			$messages[] = sprintf(
+				/* translators: %d: number of log entries deleted */
+				_n( 'Deleted %d Stampy submission log entry.', 'Deleted %d Stampy submission log entries.', $deleted, 'stampy' ),
+				$deleted
+			);
+		}
+
 		if ( null === $subscriber ) {
 			return array(
-				'items_removed'  => false,
+				'items_removed'  => $removed,
 				'items_retained' => false,
-				'messages'       => array(
+				'messages'       => count( $messages ) > 0 ? $messages : array(
 					__( 'No Stampy subscriber data found for this email address.', 'stampy' ),
 				),
 				'done'           => true,
@@ -350,13 +416,13 @@ final class Privacy {
 
 		$repo = new SubscriberRepository();
 		$repo->delete( (int) $subscriber->id );
+		$removed    = true;
+		$messages[] = __( 'Stampy subscriber data erased.', 'stampy' );
 
 		return array(
-			'items_removed'  => true,
+			'items_removed'  => $removed,
 			'items_retained' => false,
-			'messages'       => array(
-				__( 'Stampy subscriber data erased.', 'stampy' ),
-			),
+			'messages'       => $messages,
 			'done'           => true,
 		);
 	}

@@ -2100,3 +2100,144 @@ Status: **COMPLETE** ✓
   export→delete→re-import round-trip). Total: 72 unit PHP, 25 JS, 263
   integration, 28 E2E = 388 tests.
 
+---
+
+## Phase 16 — Submission Log (consent audit trail)
+
+**Status:** Complete (revised). All tests pass.
+
+**Revised strategy:** Separate `submission_log` table with `subscriber_id`
+FK. Only logs successful signups (pending/confirmed). Entries are
+auto-deleted when the subscriber is deleted (cascade in
+`SubscriberRepository::delete()`). Enabled by default. No retention
+purge — entries are kept indefinitely until subscriber deletion.
+Admin submission log viewer page (WP_List_Table, searchable by email).
+
+**Requirements fulfilled:**
+- Submission log table (`submission_log`) with columns: id,
+  subscriber_id (FK), email, form_data (JSON), list_ids (CSV),
+  form_id, consent_version, consent_text, status, created_at.
+  No ip_address column (removed per user request).
+- Schema::DB_VERSION bumped to 4; `migrate_to_4()` adds subscriber_id
+  column via dbDelta + drops ip_address column explicitly.
+- `SubmissionLogRepository` — `log()` (with subscriber_id), `find()`,
+  `find_by_subscriber()`, `find_by_email()`, `get_all()` (paginated +
+  search), `count()` (with search), `delete_by_subscriber()`,
+  `delete_by_email()`. No `purge_old()` — entries kept indefinitely.
+- `SubmissionLogSettings` — `is_enabled()` (default ON). No retention
+  setting. Option key: `stampy_submission_log_enabled`.
+- `SignupService` logs only successful signups: `pending` (new/refreshed
+  pending signup) and `confirmed` (re-signup by already-confirmed
+  subscriber). Spam-rejected and validation-failed are NOT logged (no
+  subscriber exists). Passes subscriber_id to the log.
+- `SubscriberRepository::delete()` cascade-deletes submission_log entries
+  for the subscriber (within the existing transaction).
+- Settings UI: enable checkbox only (no retention days input).
+- `Privacy.php` (GDPR): submission log entries exported (with form_data
+  decoded) and erased via `delete_by_email()`.
+- Admin: `SubmissionLogListTable` (WP_List_Table) + `SubmissionLogPage`
+  (standalone admin page under Stampy menu, searchable by email).
+  Columns: email, status, form_data, lists, consent, date.
+- `uninstall.php`: drops table, deletes option, no cron to clear.
+
+**Functional steps:**
+- Schema: added `$bigfk` = `BIGINT UNSIGNED NOT NULL` for FK columns
+  (NOT `AUTO_INCREMENT` like `$biguint`). dbDelta misinterprets a non-id
+  column with `AUTO_INCREMENT` as an error.
+- Migration: `migrate_to_4()` runs `Schema::install()` (dbDelta adds
+  subscriber_id) then explicitly drops `ip_address` via `ALTER TABLE`
+  (dbDelta doesn't remove columns).
+- `log_submission()` signature changed: takes `(int $subscriber_id,
+  string $email, array $fields, array $list_ids, ?int $form_id,
+  int $consent_version, string $status)` — no more raw `$request` array
+  or IP address.
+- AdminMenu: new submenu page `stampy-submission-log` registered.
+- PHPStan baseline regenerated (79 errors, all `wpdb::prepare()` literal-string
+  false-positives).
+
+**Test coverage:** 3 unit tests (SubmissionLogSettingsTest — default
+enabled, enable flag, disable flag). 16 integration tests
+(PhaseSixteenTest — pending logging, confirmed re-signup, spam NOT
+logged, validation NOT logged, form_data capture, list_ids capture,
+consent_text capture, subscriber_id set, disabled logging, GDPR export
+includes log, GDPR erase deletes log, subscriber delete cascades log,
+find by subscriber, find by ID, get_all, get_all with search, count
+with search, delete by subscriber). 4 E2E tests (phase-16.spec.ts —
+viewer page accessible, signup creates visible log entry, search by
+email filters the log, subscriber delete cascade-removes log entries).
+Total: 75 unit PHP, 25 JS, 281 integration, 32 E2E = 413 tests.
+
+**Note:** The E2E suite previously had one flaky test — `admin.spec.ts`
+"bulk set confirmed changes subscriber status". This has been fixed (see
+"Post-Phase-16 fix" below). The phase-16 spec passes 4/4.
+
+**Gotchas discovered:**
+- **dbDelta misinterprets non-id `AUTO_INCREMENT` columns** — using
+  `$biguint` (which includes `AUTO_INCREMENT`) for a FK column like
+  `subscriber_id` causes "Incorrect table definition; there can be only
+  one auto column and it must be defined as a key". Fix: use a separate
+  `$bigfk = 'BIGINT UNSIGNED NOT NULL'` for FK columns (no
+  `AUTO_INCREMENT`).
+- **dbDelta does not remove columns** — adding a new column via
+  `Schema::install()` works, but dropping an old column (`ip_address`)
+  requires an explicit `ALTER TABLE ... DROP COLUMN` in the migration.
+- **`SignupService::confirm()` does NOT log** — only `signup()` calls
+  `log_submission()`. The 'confirmed' log status is for when an
+  already-confirmed subscriber re-signs up (the "update subscription"
+  path). A standard signup→confirm flow produces only one 'pending'
+  entry.
+- **PHPCS `WordPress.DB.PreparedSQL.NotPrepared`** is triggered
+  alongside `InterpolatedNotPrepared` when using `$wpdb->prepare()`
+  with interpolated table names. Both sniffs must be listed in the
+  `phpcs:disable` block.
+
+
+## Post-Phase-16 fix — bulk-action E2E test
+
+### Root cause
+
+The `admin.spec.ts` "bulk set confirmed changes subscriber status" E2E
+test was consistently failing (not actually flaky — the "flaky"
+characterization was a misdiagnosis). Root cause: in Phase 14 the
+subscribers list form was changed from `method="post"` to `method="get"`
+(so the list-filter dropdown values land in `$_GET`). However,
+`SubscribersListTable::handle_bulk_action()` still read the selected
+subscriber IDs from `$_POST['subscriber']`. Since the form submits via
+GET, `$_POST['subscriber']` was empty and the handler bailed early
+before processing the action — so the redirect with
+`stampy_bulk_done=1` never fired.
+
+### Fix
+
+- **`includes/Admin/SubscribersListTable.php`** — `handle_bulk_action()`
+  now reads `$_REQUEST['subscriber']` instead of `$_POST['subscriber']`.
+  This matches WP core's own `WP_List_Table::current_action()` (which
+  reads from `$_REQUEST`) and works regardless of form method.
+  `check_admin_referer()` already reads from `$_REQUEST`, so the nonce
+  check was already working via GET.
+- **`tests/e2e/admin.spec.ts`** — rewrote the bulk-action tests:
+  - Use a unique `Date.now()`-suffixed email (`bulk-e2e-${ Date.now()
+    }@stampy.local`) so leftover state from a previous failed run
+    doesn't pollute the search results.
+  - Added `wpCli()` + `deleteSubscriber()` helpers (same pattern as
+    phase-14/15/16 specs) and cleanup in the final test.
+  - Removed the `Promise.all([waitForNavigation, click])` anti-pattern
+    in the "set unsubscribed" test — replaced with bare `click` +
+    `waitForLoadState('domcontentloaded')` + `waitForSelector('#wpadminbar')`
+    (matches the "set confirmed" test and the documented best practice).
+  - Added `{ force: true }` to the `#search-submit` clicks (was missing
+    on the bare `#search-submit` click in the first test).
+  - Used `@stampy.local` domain (per AGENTS.md gotcha: `@example.com`
+    addresses are masked by the terminal and appear identical).
+
+### Verification
+
+- `admin.spec.ts` passes 6/6 across 3 consecutive runs (was 0/6 for the
+  bulk test before the fix).
+- `AdminSubscribersTest` integration suite: 281/281 pass (the
+  `do_bulk_action()` helper sets both `$_POST` and `$_REQUEST`, so the
+  `$_REQUEST` change is backward-compatible).
+- `validate:fast` green.
+
+
+

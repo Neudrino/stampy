@@ -14,6 +14,7 @@ use Stampy\Smtp\SmtpTransport;
 use Stampy\SpamGuards\QuizGuard;
 use Stampy\SpamGuards\FriendlyCaptchaGuard;
 use Stampy\SpamGuards\TurnstileGuard;
+use Stampy\SubmissionLogSettings;
 use Stampy\Tracking\TrackingSettings;
 
 /**
@@ -193,6 +194,20 @@ final class SettingsPage {
 				</tr>
 			</table>
 
+		<h2><?php esc_html_e( 'Submission Log', 'stampy' ); ?></h2>
+			<table class="form-table" role="presentation">
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Enable Submission Log', 'stampy' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="submission_log_enabled" id="submission_log_enabled" value="1" <?php checked( SubmissionLogSettings::is_enabled(), true ); ?> />
+							<?php esc_html_e( 'Log every successful signup submission (email, fields, consent text, timestamp)', 'stampy' ); ?>
+						</label>
+						<p class="description"><?php esc_html_e( 'When enabled, an audit trail of every signup submission is kept and automatically deleted when the subscriber is removed. Enabled by default.', 'stampy' ); ?></p>
+					</td>
+				</tr>
+			</table>
+
 			<?php submit_button( __( 'Save Settings', 'stampy' ) ); ?>
 
 			</form>
@@ -276,6 +291,11 @@ final class SettingsPage {
 		update_option( 'stampy_turnstile_secret_key', $turnstile_secret_key, true );
 		update_option( 'stampy_friendly_captcha_site_key', $fc_site_key, true );
 		update_option( 'stampy_friendly_captcha_secret_key', $fc_secret_key, true );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$sub_log_enabled = isset( $_POST['submission_log_enabled'] ) ? '1' : '0';
+		// phpcs:enable
+		update_option( SubmissionLogSettings::ENABLED_OPTION, $sub_log_enabled, true );
 
 		wp_safe_redirect(
 			add_query_arg(
