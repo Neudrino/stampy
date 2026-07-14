@@ -2070,3 +2070,33 @@ Status: **COMPLETE** ✓
   copy row action). Total: 72 unit PHP, 25 JS, 248 integration, 24 E2E
   = 369 tests.
 
+### Phase 15 — Import/Export
+- **ImportExportService:** Backend service with CSV/JSON export and JSON
+  import. Export gathers all subscriber properties (email, status,
+  created_at, confirmed_at, unsubscribed_at, consent_version) + all
+  custom field values from subscriber_meta. CSV uses field definitions
+  from FieldRepository as column headers (email always first). JSON uses
+  an array of objects keyed by field key. Import creates a new list,
+  upserts each subscriber by email (create_or_get), marks as confirmed,
+  applies field values via SubscriberMetaRepository::apply_merge (merge
+  policy: non-empty overwrites), and adds to the chosen list. Invalid
+  emails are skipped with per-row error messages.
+- **REST controller:** ImportExportController with GET /stampy/v1/export
+  (format=csv|json, list_id=optional) and POST /stampy/v1/import
+  (rows=array, list_name=string). Both require manage_options permission.
+- **React admin page:** `src/import-export/` with tabbed UI (Export/Import).
+  Export tab: format dropdown (CSV/JSON), source list dropdown (all or
+  specific), download button. Import tab: file upload (.csv/.json),
+  PapaParse with auto-detect delimiter + fallback dropdown (comma,
+  semicolon, tab, pipe, custom), live preview of first 10 rows, list
+  name input, import button with result summary (imported/skipped/errors).
+- **PapaParse dependency:** Added `papaparse` + `@types/papaparse` to
+  package.json dependencies.
+- **Test coverage:** 15 integration tests (PhaseFifteenTest — export CSV
+  all/by list, export JSON, columns order, CSV round-trip, JSON round-trip,
+  skip invalid emails, upsert existing, merge policy empty, list creation,
+  REST export CSV/JSON, REST import, REST auth required). 4 E2E tests
+  (phase-15.spec.ts — page accessible, export CSV, import via REST,
+  export→delete→re-import round-trip). Total: 72 unit PHP, 25 JS, 263
+  integration, 28 E2E = 388 tests.
+
