@@ -80,13 +80,17 @@ final class SubscribersPage {
 		$bulk_done = isset( $_GET['stampy_bulk_done'] ) ? sanitize_text_field( wp_unslash( $_GET['stampy_bulk_done'] ) ) : '';
 		$bulk_msg  = isset( $_GET['stampy_bulk_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['stampy_bulk_msg'] ) ) : '';
 		// phpcs:enable
+
+		$subscribers_repo = new SubscriberRepository();
+		$total_count      = $subscribers_repo->count();
 		?>
 		<div class="wrap">
 			<?php if ( '1' === $bulk_done && '' !== $bulk_msg ) : ?>
 				<div class="notice notice-success is-dismissible"><p><?php echo esc_html( $bulk_msg ); ?></p></div>
 			<?php endif; ?>
 			<h1 class="wp-heading-inline"><?php esc_html_e( 'Subscribers', 'stampy' ); ?></h1>
-		<form method="post">
+			<span class="subtitle"><?php echo esc_html( sprintf( /* translators: %s: number of subscribers */ __( '(%s total)', 'stampy' ), number_format_i18n( $total_count ) ) ); ?></span>
+		<form method="get">
 			<input type="hidden" name="page" value="stampy-subscribers" />
 			<?php $table->search_box( __( 'Search subscribers', 'stampy' ), 'subscriber' ); ?>
 			<?php $table->display(); ?>

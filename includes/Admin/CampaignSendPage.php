@@ -263,6 +263,18 @@ final class CampaignSendPage {
 			);
 		}
 
+		$copy_url = wp_nonce_url(
+			admin_url( 'admin-post.php?action=stampy_copy_campaign&post_id=' . $post->ID ),
+			'stampy_copy_campaign_' . $post->ID
+		);
+
+		$actions['stampy_copy'] = sprintf(
+			'<a href="%s" aria-label="%s">%s</a>',
+			esc_url( $copy_url ),
+			esc_attr( sprintf( /* translators: %s: campaign title */ __( 'Copy &#8220;%s&#8221;', 'stampy' ), $post->post_title ) ),
+			esc_html__( 'Copy', 'stampy' )
+		);
+
 		return $actions;
 	}
 }
