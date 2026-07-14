@@ -1,6 +1,11 @@
 parameters:
 	ignoreErrors:
 		-
+			message: "#^Parameter \\#1 \\$text of function esc_html expects string, string\\|false given\\.$#"
+			count: 1
+			path: includes/Admin/SubmissionLogListTable.php
+
+		-
 			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
 			count: 16
 			path: includes/Repositories/CampaignRecipientRepository.php
@@ -62,6 +67,16 @@ parameters:
 
 		-
 			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			count: 8
+			path: includes/Repositories/SubmissionLogRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			count: 2
+			path: includes/Repositories/SubmissionLogRepository.php
+
+		-
+			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
 			count: 4
 			path: includes/Repositories/SubscriberMetaRepository.php
 
@@ -72,10 +87,10 @@ parameters:
 
 		-
 			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
-			count: 11
+			count: 12
 			path: includes/Repositories/SubscriberRepository.php
 
 		-
 			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
-			count: 6
+			count: 7
 			path: includes/Repositories/SubscriberRepository.php

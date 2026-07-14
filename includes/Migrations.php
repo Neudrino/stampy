@@ -79,4 +79,35 @@ class Migrations {
 	protected static function migrate_to_1(): void {
 		Schema::install();
 	}
+
+	/**
+	 * Migration to version 3: add submission_log table.
+	 *
+	 * Schema::install() is idempotent via dbDelta(), so it safely
+	 * creates the new table without touching existing ones.
+	 */
+	protected static function migrate_to_3(): void {
+		Schema::install();
+	}
+
+	/**
+	 * Migration to version 4: add subscriber_id column, remove ip_address.
+	 *
+	 * DbDelta() handles adding the new column. The ip_address column
+	 * is dropped explicitly since dbDelta does not remove columns.
+	 */
+	protected static function migrate_to_4(): void {
+		Schema::install();
+
+		$wpdb  = $GLOBALS['wpdb'];
+		$table = Schema::table( 'submission_log', $wpdb );
+
+		// Check if ip_address column exists, then drop it.
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$column = $wpdb->get_results( "SHOW COLUMNS FROM $table LIKE 'ip_address'" );
+		if ( is_array( $column ) && count( $column ) > 0 ) {
+			$wpdb->query( "ALTER TABLE $table DROP COLUMN ip_address" );
+		}
+		// phpcs:enable
+	}
 }

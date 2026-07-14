@@ -215,17 +215,19 @@ class SubscriberRepository {
 		$pending_table    = Schema::table( 'pending_signups', $wpdb );
 		$recipients_table = Schema::table( 'campaign_recipients', $wpdb );
 		$clicks_table     = Schema::table( 'campaign_clicks', $wpdb );
+		$log_table        = Schema::table( 'submission_log', $wpdb );
 		$subscribers      = $this->table();
 
 		$wpdb->query( 'START TRANSACTION' );
 
 		try {
-			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
 			$wpdb->query( $wpdb->prepare( "DELETE c FROM $clicks_table c INNER JOIN $recipients_table r ON c.recipient_id = r.id WHERE r.subscriber_id = %d", $id ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $recipients_table WHERE subscriber_id = %d", $id ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $pending_table WHERE subscriber_id = %d", $id ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $lists_table WHERE subscriber_id = %d", $id ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $meta_table WHERE subscriber_id = %d", $id ) );
+			$wpdb->query( $wpdb->prepare( "DELETE FROM $log_table WHERE subscriber_id = %d", $id ) );
 			$wpdb->query( $wpdb->prepare( "DELETE FROM $subscribers WHERE id = %d", $id ) );
 			// phpcs:enable
 

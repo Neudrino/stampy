@@ -15,6 +15,7 @@ use Stampy\Schema;
 use Stampy\Smtp\SmtpSettings;
 use Stampy\Campaigns\CampaignPostType;
 use Stampy\Tracking\TrackingSettings;
+use Stampy\SubmissionLogSettings;
 
 // Exit if not called by WordPress during uninstall.
 if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
@@ -73,6 +74,7 @@ $stampy_options = array(
 	'stampy_turnstile_secret_key',
 	'stampy_friendly_captcha_site_key',
 	'stampy_friendly_captcha_secret_key',
+	SubmissionLogSettings::ENABLED_OPTION,
 );
 
 foreach ( $stampy_options as $stampy_option ) {

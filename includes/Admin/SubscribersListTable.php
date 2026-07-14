@@ -377,12 +377,12 @@ class SubscribersListTable extends WP_List_Table {
 			return;
 		}
 
-		if ( ! isset( $_POST['subscriber'] ) ) {
+		if ( ! isset( $_REQUEST['subscriber'] ) ) {
 			return;
 		}
 
 		check_admin_referer( 'bulk-subscribers' );
-		$ids = array_map( 'intval', (array) wp_unslash( $_POST['subscriber'] ) );
+		$ids = array_map( 'intval', (array) wp_unslash( $_REQUEST['subscriber'] ) );
 		// phpcs:enable
 
 		if ( count( $ids ) === 0 ) {

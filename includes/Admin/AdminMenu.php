@@ -102,6 +102,15 @@ final class AdminMenu {
 			array( SettingsPage::class, 'render' )
 		);
 
+		add_submenu_page(
+			'stampy-subscribers',
+			__( 'Submission Log', 'stampy' ),
+			__( 'Submission Log', 'stampy' ),
+			'manage_options',
+			'stampy-submission-log',
+			array( SubmissionLogPage::class, 'render' )
+		);
+
 		$ie_hook = add_submenu_page(
 			'stampy-subscribers',
 			__( 'Import / Export', 'stampy' ),

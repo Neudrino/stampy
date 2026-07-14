@@ -27,6 +27,7 @@ use Stampy\Repositories\ListRepository;
 use Stampy\Repositories\PendingSignupRepository;
 use Stampy\Repositories\SubscriberMetaRepository;
 use Stampy\Repositories\SubscriberRepository;
+use Stampy\Repositories\SubmissionLogRepository;
 use Stampy\Email\ConfirmationEmail;
 use Stampy\SpamGuards\SpamGuardChain;
 use Stampy\SpamGuards\SpamGuardResult;
@@ -94,6 +95,13 @@ final class SignupService {
 	private ValidatorRegistry $validators;
 
 	/**
+	 * Submission log repository.
+	 *
+	 * @var SubmissionLogRepository
+	 */
+	private SubmissionLogRepository $submission_log;
+
+	/**
 	 * Constructor.
 	 *
 	 * @param SubscriberRepository|null     $subscribers  Optional.
@@ -104,6 +112,7 @@ final class SignupService {
 	 * @param ConfirmationEmail|null        $mailer       Optional.
 	 * @param SpamGuardChain|null           $guard_chain   Optional.
 	 * @param ValidatorRegistry|null        $validators    Optional.
+	 * @param SubmissionLogRepository|null  $submission_log Optional.
 	 */
 	public function __construct(
 		?SubscriberRepository $subscribers = null,
@@ -113,16 +122,18 @@ final class SignupService {
 		?ConsentTextRepository $consent = null,
 		?ConfirmationEmail $mailer = null,
 		?SpamGuardChain $guard_chain = null,
-		?ValidatorRegistry $validators = null
+		?ValidatorRegistry $validators = null,
+		?SubmissionLogRepository $submission_log = null
 	) {
-		$this->subscribers = $subscribers ?? new SubscriberRepository();
-		$this->pending     = $pending ?? new PendingSignupRepository();
-		$this->meta        = $meta ?? new SubscriberMetaRepository();
-		$this->lists       = $lists ?? new ListRepository();
-		$this->consent     = $consent ?? new ConsentTextRepository();
-		$this->mailer      = $mailer ?? new ConfirmationEmail();
-		$this->guard_chain = $guard_chain ?? SpamGuardChain::default_chain();
-		$this->validators  = $validators ?? ValidatorRegistry::instance();
+		$this->subscribers    = $subscribers ?? new SubscriberRepository();
+		$this->pending        = $pending ?? new PendingSignupRepository();
+		$this->meta           = $meta ?? new SubscriberMetaRepository();
+		$this->lists          = $lists ?? new ListRepository();
+		$this->consent        = $consent ?? new ConsentTextRepository();
+		$this->mailer         = $mailer ?? new ConfirmationEmail();
+		$this->guard_chain    = $guard_chain ?? SpamGuardChain::default_chain();
+		$this->validators     = $validators ?? ValidatorRegistry::instance();
+		$this->submission_log = $submission_log ?? new SubmissionLogRepository();
 	}
 
 	/**
@@ -218,7 +229,7 @@ final class SignupService {
 
 		if ( null !== $subscriber && 'confirmed' === $subscriber->status ) {
 			$this->apply_confirmed_update( (int) $subscriber->id, $validated_fields, $list_ids );
-
+			$this->log_submission( (int) $subscriber->id, $email, $validated_fields, $list_ids, $form_id, $consent_ver, 'confirmed' );
 			return array(
 				'success' => true,
 				'message' => __( 'Your subscription has been updated.', 'stampy' ),
@@ -248,9 +259,51 @@ final class SignupService {
 
 		$this->mailer->send( $email, $token );
 
+		$this->log_submission( (int) $subscriber->id, $email, $validated_fields, $list_ids, $form_id, $consent_ver, 'pending' );
+
 		return array(
 			'success' => true,
 			'message' => __( 'Please check your email to confirm your subscription.', 'stampy' ),
+		);
+	}
+
+	/**
+	 * Log a submission if the submission log is enabled.
+	 *
+	 * @param int                 $subscriber_id   Subscriber ID.
+	 * @param string              $email           Subscriber email.
+	 * @param array<string,mixed> $fields          Validated field values.
+	 * @param array<int>          $list_ids        Target list IDs.
+	 * @param int|null            $form_id         Form ID (if any).
+	 * @param int                 $consent_version Consent-text version.
+	 * @param string              $status          Submission outcome (pending|confirmed).
+	 * @return void
+	 */
+	private function log_submission(
+		int $subscriber_id,
+		string $email,
+		array $fields,
+		array $list_ids,
+		?int $form_id,
+		int $consent_version,
+		string $status
+	): void {
+		if ( ! SubmissionLogSettings::is_enabled() ) {
+			return;
+		}
+
+		$consent_v    = $this->consent->latest();
+		$consent_text = null !== $consent_v ? $consent_v->text : '';
+
+		$this->submission_log->log(
+			$subscriber_id,
+			$email,
+			$fields,
+			$list_ids,
+			$form_id,
+			$consent_version,
+			$consent_text,
+			$status
 		);
 	}
 
