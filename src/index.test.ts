@@ -7,7 +7,7 @@ import { STAMPY_VERSION } from './index';
 
 describe( 'STAMPY_VERSION', () => {
 	it( 'exposes the plugin version', () => {
-		expect( STAMPY_VERSION ).toBe( '0.0.1' );
+		expect( STAMPY_VERSION ).toBe( 'unreleased' );
 	} );
 
 	it( 'is a string', () => {

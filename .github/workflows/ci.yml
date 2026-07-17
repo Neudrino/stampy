@@ -22,11 +22,11 @@ jobs:
     # where PHP is available directly on the runner.
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run lint:js
       - run: npm run lint:css
       - run: npm run type-check
@@ -36,11 +36,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run test:unit:js
 
   unit-php:
@@ -79,11 +79,11 @@ jobs:
       WP_ENV_HOME: ./.wp-env-home
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       # Override the WordPress core version per matrix entry. wp-env reads the
       # WP_ENV_CORE environment variable to override the .wp-env.json "core".
       - name: Start wp-env (WP ${{ matrix.wp }})
@@ -109,11 +109,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run build
       - run: npx playwright install --with-deps chromium
       - run: npm run env:start
@@ -140,11 +140,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm run build
       # Verify a clean production Composer install (no dev deps).
       - uses: shivammathur/setup-php@v2
@@ -173,23 +173,26 @@ jobs:
       - uses: wordpress/plugin-check-action@v1
         with:
           build-dir: '.'
-          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs'
+          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs,.husky'
           exclude-files: |
             phpunit.xml.dist
             phpstan.neon.dist
             phpcs.xml.dist
             phpstan-baseline.neon
             playwright.config.ts
+            jest.config.js
+            tsconfig.json
+            eslint.config.cjs
             .gitignore
             .distignore
             .nvmrc
             .wp-env.json
+            .editorconfig
             .gitkeep
             composer.json
             composer.lock
             package.json
             package-lock.json
-            tsconfig.json
             PLAN.md
             PROGRESS.md
             AGENTS.md
@@ -203,11 +206,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
       - run: npm audit --audit-level=high || true
       - uses: shivammathur/setup-php@v2
         with:

@@ -5,7 +5,7 @@
 	"title": "Stampy Campaign Editor",
 	"category": "widgets",
 	"description": "Sidebar panel for composing email campaigns.",
-	"version": "0.0.1",
+	"version": "0.0.0",
 	"textdomain": "stampy",
 	"editorScript": "file:./index.ts"
 }

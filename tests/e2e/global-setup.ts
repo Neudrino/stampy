@@ -29,6 +29,19 @@ export default async function globalSetup() {
 		);
 	}
 
+	// Activate the Plugin Check plugin (pre-installed via .wp-env.json
+	// tests.plugins mapping) so the plugin-check E2E test can run
+	// `wp plugin check` via WP-CLI.
+	try {
+		wpCli( 'wp plugin activate plugin-check' );
+	} catch ( e ) {
+		throw new Error(
+			'Failed to activate Plugin Check plugin in tests instance. ' +
+				'Ensure .wp-env.json has the plugin-check mapping.\n' +
+				( e instanceof Error ? e.message : String( e ) )
+		);
+	}
+
 	wpCli(
 		`wp eval 'global $wpdb; $wpdb->insert( $wpdb->prefix . "stampy_lists", array( "name" => "E2E Test List", "slug" => "e2e-test", "description" => "E2E test list" ) );'`
 	);

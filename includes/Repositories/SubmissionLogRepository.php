@@ -80,6 +80,10 @@ class SubmissionLogRepository {
 
 		$list_ids_str = implode( ',', $list_ids );
 
+		// Suppress DB errors during insert so a failure doesn't corrupt
+		// the REST response JSON output (WP_DEBUG prints error HTML).
+		$prev_show_errors = $this->wpdb->show_errors( false );
+
 		$this->wpdb->insert(
 			$this->table(),
 			array(
@@ -95,6 +99,8 @@ class SubmissionLogRepository {
 			),
 			array( '%d', '%s', '%s', '%s', '%d', '%d', '%s', '%s', '%s' )
 		);
+
+		$this->wpdb->show_errors( $prev_show_errors );
 
 		return (int) $this->wpdb->insert_id;
 	}

@@ -95,7 +95,9 @@ test.describe.serial( 'Campaign send', () => {
 
 		// Create a campaign via WP-CLI.
 		const listId = process.env.STAMPY_E2E_LIST_ID || '1';
-		const escapedSubject = subject.replace( /'/g, `\\'` );
+		const escapedSubject = subject
+			.replace( /\\/g, '\\\\' )
+			.replace( /'/g, "\\'" );
 		const createOutput = wpCli(
 			`wp eval '
 			$post_id = wp_insert_post( array(

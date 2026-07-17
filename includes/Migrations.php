@@ -102,8 +102,17 @@ class Migrations {
 		$wpdb  = $GLOBALS['wpdb'];
 		$table = Schema::table( 'submission_log', $wpdb );
 
+		// Check if subscriber_id column exists, then add it explicitly.
+		// dbDelta() does not reliably add columns in the middle of a table
+		// when the column ordering differs from the existing structure.
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQL.NotPrepared
+		$column = $wpdb->get_results( "SHOW COLUMNS FROM $table LIKE 'subscriber_id'" );
+		if ( ! is_array( $column ) || count( $column ) === 0 ) {
+			$wpdb->query( "ALTER TABLE $table ADD COLUMN subscriber_id BIGINT UNSIGNED NOT NULL AFTER id" );
+			$wpdb->query( "ALTER TABLE $table ADD INDEX subscriber_id (subscriber_id)" );
+		}
+
 		// Check if ip_address column exists, then drop it.
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$column = $wpdb->get_results( "SHOW COLUMNS FROM $table LIKE 'ip_address'" );
 		if ( is_array( $column ) && count( $column ) > 0 ) {
 			$wpdb->query( "ALTER TABLE $table DROP COLUMN ip_address" );

@@ -3,12 +3,12 @@
  * Plugin Name:       Stampy
  * Plugin URI:        https://github.com/Neudrino/stampy
  * Description:       Mailing-list plugin with double opt-in signup, subscriber/list management, a block-editor newsletter composer, SMTP delivery, and open/click tracking.
- * Version:           0.0.1
+ * Version:           unreleased
  * Requires at least: 7.0
  * Requires PHP:      8.3
  * Author:            Neudrino
- * License:           GPL-2.0-or-later
- * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
+ * License:           GPLv3
+ * License URI:       https://www.gnu.org/licenses/gpl-3.0.html
  * Text Domain:       stampy
  * Domain Path:       /languages
  *
@@ -30,9 +30,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 const PLUGIN_FILE = __FILE__;
 
 /**
- * Plugin version. Frozen at 0.0.1 during development.
+ * Plugin version. Set to 1.0.0 during build.
  */
-const VERSION = '0.0.1';
+const VERSION = 'unreleased';
 
 /**
  * Composer autoloader. Present once `composer install` has run.

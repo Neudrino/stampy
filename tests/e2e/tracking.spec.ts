@@ -96,7 +96,9 @@ test.describe.serial( 'Tracking', () => {
 
 		// Create a campaign with a link.
 		const listId = process.env.STAMPY_E2E_LIST_ID || '1';
-		const escapedSubject = subject.replace( /'/g, `\\'` );
+		const escapedSubject = subject
+			.replace( /\\/g, '\\\\' )
+			.replace( /'/g, "\\'" );
 		const createOutput = wpCli(
 			`wp eval '
 			$post_id = wp_insert_post( array(
@@ -145,18 +147,14 @@ test.describe.serial( 'Tracking', () => {
 			/<img[^>]+src="(http[^"]*stampy_trk_r=[^"]+)"/i
 		);
 		expect( pixelMatch ).not.toBeNull();
-		const pixelUrl = pixelMatch![ 1 ]
-			.replace( /&amp;/g, '&' )
-			.replace( /&#038;/g, '&' );
+		const pixelUrl = pixelMatch![ 1 ].replace( /&amp;|&#038;/g, '&' );
 
 		// Extract the click URL.
 		const clickMatch = msgBody.match(
 			/href="(http[^"]*stampy_clk_r=[^"]+)"/i
 		);
 		expect( clickMatch ).not.toBeNull();
-		const clickUrl = clickMatch![ 1 ]
-			.replace( /&amp;/g, '&' )
-			.replace( /&#038;/g, '&' );
+		const clickUrl = clickMatch![ 1 ].replace( /&amp;|&#038;/g, '&' );
 
 		// Hit the pixel URL to record an open.
 		const pixelCtx = await request.newContext();

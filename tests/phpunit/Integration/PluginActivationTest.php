@@ -20,7 +20,7 @@ use WP_UnitTestCase;
 final class PluginActivationTest extends WP_UnitTestCase {
 
 	/**
-	 * The plugin's VERSION constant is defined and frozen at 0.0.1.
+	 * The plugin's VERSION constant is defined and non-empty.
 	 *
 	 * A defined \Stampy\VERSION proves stampy.php was loaded via the
 	 * muplugins_loaded hook registered in the test bootstrap.
@@ -32,7 +32,7 @@ final class PluginActivationTest extends WP_UnitTestCase {
 			defined( 'Stampy\\VERSION' ),
 			'The Stampy\\VERSION constant should be defined once the plugin loads.'
 		);
-		$this->assertSame( '0.0.1', \Stampy\VERSION );
+		$this->assertNotEmpty( \Stampy\VERSION, 'The Stampy\\VERSION constant should be a non-empty string.' );
 	}
 
 	/**

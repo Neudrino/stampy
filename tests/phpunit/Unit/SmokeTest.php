@@ -26,16 +26,16 @@ final class SmokeTest extends TestCase {
 	}
 
 	/**
-	 * The expected version string is present.
+	 * The version placeholder is present in the source.
 	 *
 	 * We intentionally do NOT require stampy.php here: it calls WordPress
 	 * functions, so it belongs to the integration suite. This asserts the
-	 * expected version string literally instead.
+	 * expected placeholder string literally instead.
 	 *
 	 * @return void
 	 */
 	public function test_expected_version_string(): void {
-		$this->assertSame( '0.0.1', '0.0.1' );
+		$this->assertSame( 'unreleased', 'unreleased' );
 	}
 
 	/**

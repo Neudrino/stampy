@@ -1,5 +1,6 @@
 .git
 .github
+.wordpress-org
 .wp-env-home
 node_modules
 tests

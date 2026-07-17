@@ -1,8 +1,8 @@
 {
 	"name": "stampy",
-	"version": "0.0.1",
+	"version": "0.0.0",
 	"private": true,
-	"license": "GPL-2.0-or-later",
+	"license": "GPL-3.0-only",
 	"engines": {
 		"node": ">=24"
 	},
@@ -16,8 +16,12 @@
 		"build": "wp-scripts build",
 		"start": "wp-scripts start",
 		"env:start": "WP_ENV_HOME=./.wp-env-home wp-env start",
-		"env:stop": "WP_ENV_HOME=./.wp-env-home wp-env stop",
-		"env:destroy": "WP_ENV_HOME=./.wp-env-home wp-env destroy",
+		"env:stop": "npm-run-all --continue-on-error --serial env:stop:wp env:stop:mailpit",
+		"env:stop:wp": "WP_ENV_HOME=./.wp-env-home wp-env stop",
+		"env:stop:mailpit": "bash ./dev/mailpit-down.sh",
+		"env:destroy": "npm-run-all --continue-on-error --serial env:destroy:wp env:destroy:mailpit",
+		"env:destroy:wp": "WP_ENV_HOME=./.wp-env-home wp-env destroy",
+		"env:destroy:mailpit": "bash ./dev/mailpit-down.sh",
 		"env:clean:tests": "WP_ENV_HOME=./.wp-env-home wp-env clean tests",
 		"dev:start": "npm-run-all env:start start",
 		"wp": "WP_ENV_HOME=./.wp-env-home wp-env run cli wp",
@@ -35,9 +39,9 @@
 		"@playwright/test": "^1.61.1",
 		"@types/jest": "^30",
 		"@types/wordpress__block-editor": "^15.0.6",
-		"@wordpress/e2e-test-utils-playwright": "^1.50.0",
-		"@wordpress/env": "^11.10.0",
-		"@wordpress/scripts": "^32.6.0",
+		"@wordpress/e2e-test-utils-playwright": "^1.51.0",
+		"@wordpress/env": "^11.11.0",
+		"@wordpress/scripts": "^33.0.0",
 		"husky": "^9.1.7",
 		"npm-run-all2": "^9",
 		"typescript": "^6.0.3"
