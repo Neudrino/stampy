@@ -173,23 +173,26 @@ jobs:
       - uses: wordpress/plugin-check-action@v1
         with:
           build-dir: '.'
-          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs'
+          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs,.husky'
           exclude-files: |
             phpunit.xml.dist
             phpstan.neon.dist
             phpcs.xml.dist
             phpstan-baseline.neon
             playwright.config.ts
+            jest.config.js
+            tsconfig.json
+            eslint.config.cjs
             .gitignore
             .distignore
             .nvmrc
             .wp-env.json
+            .editorconfig
             .gitkeep
             composer.json
             composer.lock
             package.json
             package-lock.json
-            tsconfig.json
             PLAN.md
             PROGRESS.md
             AGENTS.md

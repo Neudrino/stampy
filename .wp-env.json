@@ -20,7 +20,10 @@
 		"tests": {
 			"config": {
 				"STAMPY_DEV_SMTP_PORT": 1026
-			}
+			},
+			"plugins": [
+				"https://downloads.wordpress.org/plugin/plugin-check.zip"
+			]
 		}
 	},
 	"lifecycleScripts": {

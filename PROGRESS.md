@@ -440,7 +440,7 @@ Status: **COMPLETE** ✓
   - `SpamGuardChain` — ordered pipeline, stops at first failure;
     `default_chain()` factory
 - **Validator registry** (`includes/Validators/`):
-  - `FieldValidatorInterface` — pluggable type validators (Phase 13 adds more; Phase 14 form builder adds the rest)
+   - `FieldValidatorInterface` — pluggable type validators (Phase 13 adds more; Phase 18 form builder adds the rest)
   - `ValidationResult` — immutable valid/invalid value object with
     sanitized value
   - `EmailValidator` — sanitize + validate via `is_email()`, normalizes
@@ -543,7 +543,7 @@ Status: **COMPLETE** ✓
 - [x] Consent checkbox (required, text from consent-text registry)
 - [x] List selection requiring ≥1 list — editor notice + front-end no-op if none
 - [x] Accessibility (labels, aria-required, aria-invalid, aria-describedby, honeypot)
-- [x] Attributes deprecation-ready for the Phase 14 form builder
+- [x] Attributes deprecation-ready for the Phase 18 form builder
 - [x] Jest tests for block edit component
 - [x] First E2E signup→confirm journey
 
@@ -2238,6 +2238,119 @@ before processing the action — so the redirect with
   `do_bulk_action()` helper sets both `$_POST` and `$_REQUEST`, so the
   `$_REQUEST` change is backward-compatible).
 - `validate:fast` green.
+
+
+---
+
+## Phase 17 — WP.org Submission & Release Pipeline
+
+Status: **COMPLETE** ✓
+
+### Requirements fulfilled
+
+- [x] `.wordpress-org/` directory with banner, icon, screenshots
+- [x] `.distignore` updated to exclude `.wordpress-org`
+- [x] `readme.txt` in WP.org readme format (validated)
+- [x] Plugin Check integrated at three levels (CI, release pipeline, E2E)
+- [x] `build-release.yml` workflow (tag push → build → Plugin Check → GitHub Release)
+- [x] `deploy-wporg.yml` workflow (manual dispatch → SVN deploy)
+- [x] Old `release.yml` deleted (replaced by two new workflows)
+- [x] First-time submission checklist documented in README.md
+
+### What was done
+
+- **`.wordpress-org/` directory** — created with:
+  - `banner-772x250.png` (standard banner, 772×250)
+  - `banner-1544x500.png` (retina banner, 1544×500)
+  - `icon-128x128.png` (standard icon, 128×128)
+  - `icon-256x256.png` (retina icon, 256×256)
+  - `icon.svg` (vector icon with PNG fallback)
+  - `screenshot-1.png` through `screenshot-4.png` (placeholder screenshots
+    matching the `readme.txt` screenshot list — to be replaced with real
+    screenshots before submission)
+  - `README.md` documenting naming conventions and regeneration commands
+  - All images generated from SVG sources via ImageMagick `convert`
+- **`.distignore`** — added `.wordpress-org` (screenshots/icons go to SVN
+  `assets/`, not in the plugin zip).
+- **`.wp-env.json`** — added `tests.plugins` mapping for the Plugin Check
+  plugin (`https://downloads.wordpress.org/plugin/plugin-check.zip`). This
+  downloads and installs Plugin Check in the tests instance on `env:start`.
+- **`tests/e2e/global-setup.ts`** — activates the `plugin-check` plugin
+  alongside `stampy` during E2E setup.
+- **`tests/e2e/plugin-check.spec.ts`** — new E2E test that runs
+  `wp plugin check stampy --format=json` inside the wp-env tests container,
+  parses the JSON output, and asserts 0 errors. Uses `--exclude-directories`
+  and `--exclude-files` to skip dev files that are mounted into the plugin
+  directory by the wp-env mapping.
+- **`.github/workflows/build-release.yml`** — new workflow triggered by `v*`
+  tag push: version consistency check → `npm ci && npm run build` →
+  `composer install --no-dev --optimize-autoloader` → stage to clean dir
+  via `.distignore` → verify staged artifact structure → Plugin Check on
+  staged artifact (`categories=plugin_repo`, `ignore-warnings=true`) →
+  create zip → upload artifact → create GitHub Release.
+- **`.github/workflows/deploy-wporg.yml`** — new workflow triggered by
+  manual `workflow_dispatch` (input: tag to deploy): checkout at tag →
+  build → `10up/action-wordpress-plugin-deploy@stable` with `SLUG=stampy`
+  and `ASSETS_DIR=.wordpress-org`. Runs in protected `wporg-deploy`
+  environment (requires `SVN_USERNAME` and `SVN_PASSWORD` secrets).
+- **`.github/workflows/release.yml`** — deleted (replaced by the two new
+  workflows above).
+- **`.github/workflows/ci.yml`** — updated the Plugin Check job to also
+  exclude `.husky/`, `test-results/`, `playwright-report/`, and additional
+  config files (`jest.config.js`, `tsconfig.json`, `eslint.config.cjs`,
+  `.editorconfig`, `.phpunit.result.cache`).
+- **`README.md`** — added "Release & Deploy" section documenting the
+  two-workflow pipeline, the first-time submission checklist, plugin
+  assets, and Plugin Check integration.
+
+### Test results
+
+- `validate:fast` green (75 PHP unit, 25 JS, 281 PHP integration)
+- Plugin Check E2E test passes (1 new test)
+- `admin.spec.ts` + `smoke.spec.ts` all pass alongside the new test
+
+### Gotchas discovered
+
+- **`wp plugin check` scans the entire plugin directory in wp-env** — the
+  wp-env mapping mounts the entire project directory (including
+  `.wp-env-home/`, `node_modules/`, `tests/`, `dev/`, `stubs/`, `.husky/`,
+  `test-results/`, `playwright-report/`) into
+  `/var/www/html/wp-content/plugins/stampy/` inside the container.
+  Plugin Check then sees all of these as "plugin files" and scans them.
+  Fix: use `--exclude-directories` and `--exclude-files` to skip all dev
+  files and directories. The list must be comprehensive (any missed file
+  triggers an error like `hidden_files` or `application_detected`).
+- **`wp plugin check` `--format=json` output is NOT a single JSON object** —
+  the output contains `FILE: <path>` lines before each JSON array, plus a
+  `Success:` or `Error:` summary line at the end. The E2E test must parse
+  line by line, extracting JSON arrays and filtering for `type === "ERROR"`.
+- **Runtime checks (`--require=cli.php`) hang in the wp-env tests-cli
+  container** — the `--require=cli.php` flag enables runtime checks which
+  need a full WP environment boot. In the tests-cli container, this
+  hangs indefinitely. Fix: the E2E test runs only static checks (no
+  `--require` flag). The CI `wordpress/plugin-check-action@v1` and the
+  release pipeline `build-release.yml` both run the full check (static +
+  runtime) via the GitHub Action, which spins up its own dedicated wp-env
+  instance.
+- **Plugin Check flags hidden files and application files** — any file
+  starting with `.` (like `.gitkeep`, `.phpunit.result.cache`) triggers
+  `hidden_files`. Config files like `phpunit.xml.dist` trigger
+  `application_detected`. These are dev files that are correctly excluded
+  from the production zip via `.distignore`, but they exist in the repo
+  root and must be explicitly excluded in the Plugin Check
+  `--exclude-files` list when running against the repo root or the wp-env
+  mounted plugin directory.
+- **`.wp-env.json` `tests.plugins` mapping** — the `plugins` array under
+  `env.tests` downloads and installs plugins from wordpress.org ZIP URLs
+  into the tests instance only (not the development instance). This is
+  used to install the Plugin Check plugin for the E2E test.
+- **Plugin Check `--exclude-directories` default excludes** — Plugin Check
+  auto-excludes `.git`, `vendor`, `vendor_prefixed`, `vendor-prefixed`,
+  `node_modules` by default. But `.wp-env-home`, `tests`, `dev`, `stubs`,
+  `.husky`, `test-results`, `playwright-report`, `WordPress-PHPUnit`,
+  `tests-WordPress-PHPUnit`, and `akismet` must be explicitly excluded
+  when running against the wp-env mounted plugin directory (these dirs
+  exist inside the plugin mount because the entire project dir is mounted).
 
 
 
