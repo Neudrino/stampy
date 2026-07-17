@@ -38,20 +38,70 @@ class UnsubscribePreferencesTest extends WP_UnitTestCase {
 		parent::setUp();
 		Installer::install();
 
-		$list_repo      = new ListRepository();
-		$this->list_id  = $list_repo->create( 'Newsletter', 'newsletter', 'Test list' );
+		$list_repo     = new ListRepository();
+		$existing_list = $list_repo->find_by_slug( 'newsletter' );
+		if ( $existing_list ) {
+			$this->list_id = (int) $existing_list->id;
+		} else {
+			$this->list_id = $list_repo->create( 'Newsletter', 'newsletter', 'Test list' );
+		}
 
 		unset( $GLOBALS['phpmailer_mock_sent'] );
 	}
 
 	/**
-	 * Tear down after each test.
+	 * Clean up after each test.
+	 *
+	 * Runs AFTER parent::tearDown() (which rolls back the WP test
+	 * transaction). Cleanup queries run after the rollback so that
+	 * persisted data (from dbDelta() implicit commits) is removed.
 	 *
 	 * @return void
 	 */
 	public function tearDown(): void {
 		unset( $GLOBALS['phpmailer_mock_sent'] );
+
 		parent::tearDown();
+
+		// Clean up subscribers and list memberships that persist across
+		// test methods due to dbDelta() implicit commits breaking the
+		// WP test transaction.
+		$wpdb = $GLOBALS['wpdb'];
+
+		$subscriber_emails = array(
+			'unsub@example.com',
+			'unsub-all@example.com',
+			'prefs@example.com',
+			'toggle@example.com',
+			'opt-out@example.com',
+			'invalid-sig@example.com',
+		);
+
+		$subscriber_repo = new SubscriberRepository();
+		foreach ( $subscriber_emails as $email ) {
+			$sub = $subscriber_repo->find_by_email( $email );
+			if ( $sub ) {
+				// Delete list memberships first (FK constraint).
+				$lists_table = $wpdb->prefix . 'stampy_subscriber_lists';
+				$wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM $lists_table WHERE subscriber_id = %d",
+						(int) $sub->id
+					)
+				);
+
+				// Delete pending signups.
+				$pending_table = $wpdb->prefix . 'stampy_pending_signups';
+				$wpdb->query(
+					$wpdb->prepare(
+						"DELETE FROM $pending_table WHERE subscriber_id = %d",
+						(int) $sub->id
+					)
+				);
+
+				$subscriber_repo->delete( (int) $sub->id );
+			}
+		}
 	}
 
 	/**
@@ -229,8 +279,16 @@ class UnsubscribePreferencesTest extends WP_UnitTestCase {
 		$this->assertTrue( $data['success'] );
 		$this->assertSame( 'prefs@example.com', $data['email'] );
 		$this->assertIsArray( $data['lists'] );
-		$this->assertCount( 1, $data['lists'] );
-		$this->assertTrue( $data['lists'][0]['subscribed'] );
+
+		// The preferences endpoint returns ALL lists (not just the
+		// subscriber's). Filter to only subscribed lists — there should
+		// be exactly one (the list the subscriber was added to).
+		$subscribed_lists = array_filter(
+			$data['lists'],
+			fn( $l ) => $l['subscribed']
+		);
+		$this->assertCount( 1, $subscribed_lists );
+		$this->assertTrue( reset( $subscribed_lists )['subscribed'] );
 	}
 
 	/**

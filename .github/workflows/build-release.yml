@@ -1,9 +1,9 @@
-name: Release
+name: Build & Release
 
 on:
   push:
     tags:
-      - 'v*'
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 permissions:
   contents: write
@@ -15,12 +15,12 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
 
-      - run: npm ci
+      - run: npm ci --legacy-peer-deps
 
       - run: npm run build
 
@@ -33,9 +33,14 @@ jobs:
       - name: Install Composer deps (no-dev, optimized)
         run: composer install --no-dev --optimize-autoloader --no-interaction
 
+      - name: Inject version from tag
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          ./dev/inject-version.sh "$TAG"
+
       - name: Verify version consistency
         run: |
-          TAG="${GITHUB_REF#refs/tags/v}"
+          TAG="${GITHUB_REF#refs/tags/}"
           PLUGIN_VERSION=$(grep -oP 'Version:\s+\K\S+' stampy.php)
           README_VERSION=$(grep -oP 'Stable tag:\s+\K\S+' readme.txt)
           echo "Tag: $TAG"
@@ -50,58 +55,46 @@ jobs:
             exit 1
           fi
 
-      - name: Create zip
+      - name: Stage production artifact
         run: |
           mkdir -p /tmp/stampy
           rsync -av --exclude-from=.distignore . /tmp/stampy/
+
+      - name: Verify staged artifact structure
+        run: |
+          # The main plugin file must be at the root, not in a subfolder.
+          test -f /tmp/stampy/stampy.php
+          # vendor/ must be present (Composer prod deps).
+          test -d /tmp/stampy/vendor
+          # build/ must be present (compiled JS/CSS).
+          test -d /tmp/stampy/build
+          # readme.txt must be present.
+          test -f /tmp/stampy/readme.txt
+          echo "Staged artifact structure verified."
+
+      - name: Plugin Check on staged artifact
+        uses: wordpress/plugin-check-action@v1
+        with:
+          build-dir: '/tmp/stampy'
+          categories: 'plugin_repo'
+          ignore-warnings: 'true'
+
+      - name: Create zip
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
           cd /tmp
           zip -r stampy-$TAG.zip stampy/
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: stampy-${{ github.ref_name }}
           path: /tmp/stampy-*.zip
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: /tmp/stampy-*.zip
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  deploy:
-    name: Deploy to WordPress.org
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: wporg-deploy
-    steps:
-      - uses: actions/checkout@v7
-
-      - name: Install PHP for Composer
-        uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          coverage: none
-
-      - name: Install Composer deps (no-dev, optimized)
-        run: composer install --no-dev --optimize-autoloader --no-interaction
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version-file: '.nvmrc'
-          cache: 'npm'
-
-      - run: npm ci
-      - run: npm run build
-
-      - name: Deploy to WordPress.org SVN
-        uses: 10up/action-wordpress-plugin-deploy@stable
-        with:
-          generate-zip: false
-        env:
-          SVN_USERNAME: ${{ secrets.SVN_USERNAME }}
-          SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
-          ASSETS_DIR: assets

@@ -5,7 +5,7 @@
 	"title": "Stampy Import/Export",
 	"category": "widgets",
 	"description": "Admin page for importing and exporting subscribers.",
-	"version": "0.0.1",
+	"version": "0.0.0",
 	"textdomain": "stampy",
 	"editorScript": "file:./index.ts"
 }

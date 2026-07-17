@@ -4,4 +4,4 @@
  * Phase 0: skeleton only. Real modules are added in later phases.
  */
 
-export const STAMPY_VERSION = '0.0.1';
+export const STAMPY_VERSION = 'unreleased';
