@@ -31,7 +31,7 @@ jobs:
       - name: Install Composer deps (no-dev, optimized)
         run: composer install --no-dev --optimize-autoloader --no-interaction
 
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: '.nvmrc'
           cache: 'npm'
