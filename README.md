@@ -91,7 +91,7 @@ Stampy uses a two-workflow release pipeline. The build workflow produces a
 validated, release-ready zip on tag push. The deploy workflow pushes to the
 WordPress.org SVN repository on manual dispatch.
 
-### Build & Release workflow (`build-release.yml`)
+### Build & Release workflow (`stampy-release.yml`)
 
 Triggered by pushing a semantic version tag (e.g. `git tag 1.0.0 && git push origin 1.0.0`).
 
@@ -104,7 +104,7 @@ Triggered by pushing a semantic version tag (e.g. `git tag 1.0.0 && git push ori
 7. Create zip: `stampy-<version>.zip`
 8. Create GitHub Release with the zip attached
 
-### Deploy workflow (`deploy-wporg.yml`)
+### Deploy workflow (`stampy-wp-deployment.yml`)
 
 Triggered manually via `workflow_dispatch` (GitHub Actions → "Run workflow" →
 enter the tag, e.g. `1.0.0`). Runs in a protected `wporg-deploy` environment
@@ -126,7 +126,7 @@ submitted to WordPress.org for review:
    - `stampy.php` `VERSION` constant
    - `readme.txt` `Stable tag:` field
 2. **Run full validation:** `npm run validate` (includes E2E + integration tests)
-3. **Push a `1.0.0` tag** → triggers `build-release.yml` → produces the zip
+3. **Push a `1.0.0` tag** → triggers `stampy-release.yml` → produces the zip
 4. **Download the zip** artifact from the GitHub Release
 5. **Submit at** <https://wordpress.org/plugins/developers/add/> with a brief
    description and the zip upload
@@ -155,8 +155,8 @@ conventions and file requirements.
 The official `wordpress/plugin-check` tool (the same tool the WP.org review team
 uses) is integrated at three levels:
 
-1. **CI** (`ci.yml`) — runs on every PR/push against the repo root with dev files excluded
-2. **Release pipeline** (`build-release.yml`) — runs on the staged production artifact
+1. **CI** (`stampy-ci.yml`) — runs on every PR/push against the repo root with dev files excluded
+2. **Release pipeline** (`stampy-release.yml`) — runs on the staged production artifact
 3. **E2E test** (`tests/e2e/plugin-check.spec.ts`) — runs `wp plugin check` inside wp-env
 
 All three must report 0 errors before a release.
