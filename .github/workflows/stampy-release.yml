@@ -61,8 +61,9 @@ jobs:
           # Allowlist approach: explicitly copy only what ships in production.
           # This is safer than a denylist (.distignore) because new dev-only
           # files added to the repo are automatically excluded. The .distignore
-          # file is kept for the 10up SVN deploy action which requires it.
-          cp stampy.php readme.txt uninstall.php LICENSE .distignore /tmp/stampy/
+          # file is kept for the 10up SVN deploy action which requires it, but
+          # is NOT shipped in the zip (WP.org scanner flags hidden files).
+          cp stampy.php readme.txt uninstall.php LICENSE composer.json /tmp/stampy/
           rsync -a --exclude='vendor-backup' --exclude='.gitkeep' \
             includes/ /tmp/stampy/includes/
           rsync -a --exclude='vendor-backup' \
