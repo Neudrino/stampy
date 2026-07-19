@@ -26,15 +26,23 @@ use wpdb;
 class Installer {
 
 	/**
+	 * Option key for the stored database version.
+	 */
+	public const DB_VERSION_OPTION = 'stampy_db_version';
+
+	/**
 	 * Run the full installation: create tables + seed defaults.
 	 *
 	 * Called on activation and when the stored db_version is behind.
-	 * After running migrations, seeds any missing default data.
+	 * Creates all tables via `Schema::install()` (idempotent via
+	 * dbDelta()), updates the stored schema version, then seeds any
+	 * missing default data.
 	 *
 	 * @return void
 	 */
 	public static function install(): void {
-		Migrations::run();
+		Schema::install();
+		update_option( self::DB_VERSION_OPTION, Schema::DB_VERSION, false );
 		self::seed_default_fields();
 		self::seed_default_consent_text();
 	}

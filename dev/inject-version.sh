@@ -15,7 +15,6 @@
 #   stampy.php                          — Version: header + const VERSION
 #   readme.txt                          — Stable tag + changelog section
 #   package.json                        — "version" field
-#   src/index.ts                        — STAMPY_VERSION export
 #   src/blocks/signup/block.json        — "version" field
 #   src/campaign-editor/block.json      — "version" field
 #   src/import-export/block.json        — "version" field
@@ -46,9 +45,6 @@ sed -i "s/^const VERSION = '.*';/const VERSION = '${VERSION}';/" stampy.php
 
 # stampy.php — docblock comment (optional, for clarity).
 sed -i "s/^\( \* Plugin version\.\).*/\1 Set to ${VERSION} during build./" stampy.php
-
-# src/index.ts — STAMPY_VERSION export.
-sed -i "s/^export const STAMPY_VERSION = '.*';/export const STAMPY_VERSION = '${VERSION}';/" src/index.ts
 
 # readme.txt — Stable tag.
 sed -i "s/^Stable tag: .*/Stable tag: ${VERSION}/" readme.txt

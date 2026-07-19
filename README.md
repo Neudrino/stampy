@@ -4,8 +4,6 @@ A WordPress mailing-list plugin: double opt-in signup, subscriber/list
 management, a block-editor newsletter composer, generic SMTP delivery, and
 open/click tracking.
 
-> Status: pre-release, under active development (version `0.0.1`).
-
 - **Requires:** WordPress ≥ 7.0, PHP ≥ 8.3
 - **License:** GPLv3 (SPDX identifier: `GPL-3.0-only`)
 - **Repository:** <https://github.com/Neudrino/stampy>
@@ -98,7 +96,7 @@ Triggered by pushing a semantic version tag (e.g. `git tag 1.0.0 && git push ori
 1. Version consistency check (git tag == `stampy.php` Version == `readme.txt` Stable tag)
 2. `npm ci && npm run build` (compile JS/CSS)
 3. `composer install --no-dev --optimize-autoloader` (production deps)
-4. Stage to clean dir via `.distignore` (excludes dev files, tests, config)
+4. Stage to clean dir via **allowlist** (explicitly copies only `stampy.php`, `readme.txt`, `uninstall.php`, `LICENSE`, `.distignore`, and the `includes/`, `build/`, `vendor/`, `languages/`, `assets/` directories — all other files are excluded by default)
 5. Verify staged artifact structure (`stampy.php` at root, `vendor/` and `build/` present)
 6. **Plugin Check** on the staged artifact (`wordpress/plugin-check-action@v1` with `categories=plugin_repo`)
 7. Create zip: `stampy-<version>.zip`
@@ -121,28 +119,24 @@ with required reviewers.
 Before the deploy workflow can push to SVN, the plugin must be manually
 submitted to WordPress.org for review:
 
-1. **Bump version** from `0.0.1` to `1.0.0` (or the first release version):
-   - `stampy.php` header `Version:` field
-   - `stampy.php` `VERSION` constant
-   - `readme.txt` `Stable tag:` field
-2. **Run full validation:** `npm run validate` (includes E2E + integration tests)
-3. **Push a `1.0.0` tag** → triggers `stampy-release.yml` → produces the zip
-4. **Download the zip** artifact from the GitHub Release
-5. **Submit at** <https://wordpress.org/plugins/developers/add/> with a brief
+1. **Run full validation:** `npm run validate` (includes E2E + integration tests)
+2. **Push a `1.0.0` tag** → triggers `stampy-release.yml` → produces the zip
+3. **Download the zip** artifact from the GitHub Release
+4. **Submit at** <https://wordpress.org/plugins/developers/add/> with a brief
    description and the zip upload
-6. **Wait for review** (1–10 business days). The review team checks for:
+5. **Wait for review** (1–10 business days). The review team checks for:
    - Escaping/sanitization of all output and input
    - Nonces on all form processing
    - GPL compatibility
    - No code obfuscation, no external executable code loading
    - No tracking without consent
    - No bundling of WP-bundled libraries (jQuery, PHPMailer, etc.)
-7. **After approval:** you'll receive an email with SVN access details
-8. **Set up GitHub secrets** in the `wporg-deploy` environment:
+6. **After approval:** you'll receive an email with SVN access details
+7. **Set up GitHub secrets** in the `wporg-deploy` environment:
    - `SVN_USERNAME` — your WordPress.org username (case-sensitive)
    - `SVN_PASSWORD` — your SVN-specific password (set at
      <https://profiles.wordpress.org/me/profile/edit/group/3/?screen=svn-password>)
-9. **Run the deploy workflow** to push to SVN for the first time
+8. **Run the deploy workflow** to push to SVN for the first time
 
 ### Plugin assets (`.wordpress-org/` directory)
 
