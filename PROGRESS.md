@@ -68,7 +68,7 @@ Status: **COMPLETE** ✓
       (`dev/docker-compose.mailpit.yml`, dev mu-plugin), verify
       `host.docker.internal` reachability
 - [x] Husky pre-commit (`validate:fast`)
-- [x] GitHub Actions `ci.yml` + `codeql.yml` calling the same scripts
+- [x] GitHub Actions `stampy-stampy-ci.yml` + `codeql.yml` calling the same scripts
 - [x] Dependabot config (npm, composer, github-actions)
 - [x] README "Manual testing" section
 
@@ -103,7 +103,7 @@ Status: **COMPLETE** ✓
   `dev/docker-compose.mailpit.yml` (mailpit-dev :8025/1025, mailpit-tests
   :8026/1026), `dev/mailpit-up.sh` (idempotent), `dev/mu-plugins/
   stampy-dev-mailer.php` (routes wp_mail to Mailpit, yields when plugin SMTP
-  configured), `.github/workflows/ci.yml`, `.github/workflows/codeql.yml`,
+  configured), `.github/workflows/stampy-ci.yml`, `.github/workflows/codeql.yml`,
   `.github/dependabot.yml`, issue/PR templates.
 - Fixed `.wp-env.json` double-mount (removed `"plugins": ["."]`; rely on the
   `mappings` entry so `--env-cwd=wp-content/plugins/stampy` resolves).
@@ -196,7 +196,7 @@ Status: **COMPLETE** ✓
 - **Playwright E2E smoke tests** (`tests/e2e/smoke.spec.ts`): replaced
   placeholder `1+1=2` with 3 real tests — WP tests instance reachable via
   REST API, plugin loaded (REST namespaces), Mailpit tests instance reachable.
-- **CI workflow** (`.github/workflows/ci.yml`): added `composer lint` +
+- **CI workflow** (`.github/workflows/stampy-ci.yml`): added `composer lint` +
   `composer analyse` to the `unit-php` job (PHP is available on CI runners,
   unlike the local host); removed stale Phase 0 comments.
 
@@ -346,9 +346,9 @@ Status: **COMPLETE** ✓
   test runs after each upgrade.
 - **GitHub Actions (PRs #1, #2, #3, #5):**
   - `github/codeql-action`: v3 → v4 (`codeql.yml`)
-  - `actions/upload-artifact`: v4 → v7 (`ci.yml`, 2 occurrences)
-  - `actions/setup-node`: v4 → v6 (`ci.yml`, all occurrences)
-  - `actions/checkout`: v4 → v7 (`ci.yml` + `codeql.yml`)
+  - `actions/upload-artifact`: v4 → v7 (`stampy-stampy-ci.yml`, 2 occurrences)
+  - `actions/setup-node`: v4 → v6 (`stampy-stampy-ci.yml`, all occurrences)
+  - `actions/checkout`: v4 → v7 (`stampy-stampy-ci.yml` + `codeql.yml`)
 - **Composer (PR #4):** `wp-phpunit/wp-phpunit`: ^6.5 → ^7.0 (6.9.4 → 7.0.1).
   Required changing the constraint in `composer.json` and running `composer
   update wp-phpunit/wp-phpunit` in the container.
@@ -1407,7 +1407,7 @@ The CI E2E job was missing `npm run build` before running tests. The
 button couldn't appear without it, causing the "sidebar Send button
 starts the campaign send via AJAX" test to fail with a timeout
 waiting for the button. Fix: added `npm run build` step in
-`.github/workflows/ci.yml` before `npx playwright install`.
+`.github/workflows/stampy-ci.yml` before `npx playwright install`.
 
 ### E2E admin login robustness
 
@@ -1437,7 +1437,7 @@ render path did not. Fix: added the same inline CSS to the
 - `includes/Campaigns/CampaignPostType.php` — list table columns
   (Status, Progress, Tracking)
 - `src/campaign-editor/index.tsx` — Preview panel `initialOpen={true}`
-- `.github/workflows/ci.yml` — added `npm run build` in E2E job
+- `.github/workflows/stampy-ci.yml` — added `npm run build` in E2E job
 - `tests/e2e/admin.spec.ts` — robust admin login
 - `tests/e2e/campaign-admin-ui.spec.ts` — robust admin login + button
   visibility wait
@@ -2252,8 +2252,8 @@ Status: **COMPLETE** ✓
 - [x] `.distignore` updated to exclude `.wordpress-org`
 - [x] `readme.txt` in WP.org readme format (validated)
 - [x] Plugin Check integrated at three levels (CI, release pipeline, E2E)
-- [x] `build-release.yml` workflow (tag push → build → Plugin Check → GitHub Release)
-- [x] `deploy-wporg.yml` workflow (manual dispatch → SVN deploy)
+- [x] `stampy-release.yml` workflow (tag push → build → Plugin Check → GitHub Release)
+- [x] `stampy-wp-deployment.yml` workflow (manual dispatch → SVN deploy)
 - [x] Old `release.yml` deleted (replaced by two new workflows)
 - [x] First-time submission checklist documented in README.md
 
@@ -2282,20 +2282,20 @@ Status: **COMPLETE** ✓
   parses the JSON output, and asserts 0 errors. Uses `--exclude-directories`
   and `--exclude-files` to skip dev files that are mounted into the plugin
   directory by the wp-env mapping.
-- **`.github/workflows/build-release.yml`** — new workflow triggered by semantic
+- **`.github/workflows/stampy-release.yml`** — new workflow triggered by semantic
   version tag push (e.g. `1.0.0`): version consistency check → `npm ci && npm run build` →
   `composer install --no-dev --optimize-autoloader` → stage to clean dir
   via `.distignore` → verify staged artifact structure → Plugin Check on
   staged artifact (`categories=plugin_repo`, `ignore-warnings=true`) →
   create zip → upload artifact → create GitHub Release.
-- **`.github/workflows/deploy-wporg.yml`** — new workflow triggered by
+- **`.github/workflows/stampy-wp-deployment.yml`** — new workflow triggered by
   manual `workflow_dispatch` (input: tag to deploy): checkout at tag →
   build → `10up/action-wordpress-plugin-deploy@stable` with `SLUG=stampy`
   and `ASSETS_DIR=.wordpress-org`. Runs in protected `wporg-deploy`
   environment (requires `SVN_USERNAME` and `SVN_PASSWORD` secrets).
 - **`.github/workflows/release.yml`** — deleted (replaced by the two new
   workflows above).
-- **`.github/workflows/ci.yml`** — updated the Plugin Check job to also
+- **`.github/workflows/stampy-ci.yml`** — updated the Plugin Check job to also
   exclude `.husky/`, `test-results/`, `playwright-report/`, and additional
   config files (`jest.config.js`, `tsconfig.json`, `eslint.config.cjs`,
   `.editorconfig`, `.phpunit.result.cache`).
@@ -2329,7 +2329,7 @@ Status: **COMPLETE** ✓
   need a full WP environment boot. In the tests-cli container, this
   hangs indefinitely. Fix: the E2E test runs only static checks (no
   `--require` flag). The CI `wordpress/plugin-check-action@v1` and the
-  release pipeline `build-release.yml` both run the full check (static +
+  release pipeline `stampy-release.yml` both run the full check (static +
   runtime) via the GitHub Action, which spins up its own dedicated wp-env
   instance.
 - **Plugin Check flags hidden files and application files** — any file

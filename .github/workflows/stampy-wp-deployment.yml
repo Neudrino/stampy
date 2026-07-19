@@ -1,4 +1,4 @@
-name: Deploy to WordPress.org
+name: Stampy WP Deployment
 
 on:
   workflow_dispatch:
