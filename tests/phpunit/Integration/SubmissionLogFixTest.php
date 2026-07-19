@@ -3,8 +3,8 @@
  * Integration tests for Phase 17 post-release fixes.
  *
  * Tests two bugs discovered during manual testing:
- * 1. The submission_log table migration (migrate_to_4) doesn't add the
- *    subscriber_id column via dbDelta() — must use explicit ALTER TABLE.
+ * 1. The submission_log table must have the subscriber_id column
+ *    on a fresh install (verified via Schema::install() / dbDelta()).
  * 2. DB errors during SubmissionLogRepository::log() corrupt the REST
  *    JSON response — must suppress errors during insert.
  *
@@ -16,7 +16,6 @@ declare( strict_types=1 );
 namespace Stampy\Tests\Integration;
 
 use Stampy\Installer;
-use Stampy\Migrations;
 use Stampy\Repositories\ListRepository;
 use Stampy\Repositories\SubscriberRepository;
 use Stampy\Repositories\SubmissionLogRepository;
@@ -118,48 +117,6 @@ class SubmissionLogFixTest extends WP_UnitTestCase {
 		$columns = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
 
 		$this->assertContains( 'subscriber_id', $columns, 'subscriber_id column must exist in submission_log table' );
-	}
-
-	/**
-	 * The migrate_to_4 migration must add subscriber_id if it's missing.
-	 *
-	 * Simulates a database that was created at DB_VERSION 3 (without
-	 * subscriber_id) and then migrated to version 4. The migration must
-	 * explicitly ALTER TABLE to add the column, because dbDelta() does
-	 * not reliably add columns in the middle of a table.
-	 *
-	 * @return void
-	 */
-	public function test_migrate_to_4_adds_subscriber_id_column(): void {
-		$wpdb  = $GLOBALS['wpdb'];
-		$table = $wpdb->prefix . 'stampy_submission_log';
-
-		// Drop the subscriber_id column to simulate a v3 table.
-		$existing = $wpdb->get_results( "SHOW COLUMNS FROM $table LIKE 'subscriber_id'" );
-		if ( is_array( $existing ) && count( $existing ) > 0 ) {
-			$wpdb->query( "ALTER TABLE $table DROP COLUMN subscriber_id" );
-		}
-
-		// Also drop the subscriber_id index if it exists.
-		$index = $wpdb->get_results( "SHOW INDEX FROM $table WHERE Key_name = 'subscriber_id'" );
-		if ( is_array( $index ) && count( $index ) > 0 ) {
-			$wpdb->query( "ALTER TABLE $table DROP INDEX subscriber_id" );
-		}
-
-		// Verify the column is gone.
-		$columns_after_drop = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
-		$this->assertNotContains( 'subscriber_id', $columns_after_drop, 'Precondition: subscriber_id must be dropped before testing migration' );
-
-		// Reset the DB version to 3 and run the migration.
-		update_option( Migrations::DB_VERSION_OPTION, 3, false );
-		Migrations::run();
-
-		// Verify the column was added.
-		$columns_after_migration = $wpdb->get_col( "SHOW COLUMNS FROM $table" );
-		$this->assertContains( 'subscriber_id', $columns_after_migration, 'Migration must add subscriber_id column' );
-
-		// Verify the DB version was updated.
-		$this->assertSame( 4, (int) get_option( Migrations::DB_VERSION_OPTION ), 'DB version must be 4 after migration' );
 	}
 
 	/**

@@ -37,10 +37,11 @@ class Schema {
 	/**
 	 * Current schema version.
 	 *
-	 * Increment when a table definition changes. The migration runner compares
-	 * this against the stored `stampy_db_version` option.
+	 * Increment when a table definition changes. The stored
+	 * `stampy_db_version` option is compared against this value on
+	 * `plugins_loaded` to decide whether to run `Installer::install()`.
 	 */
-	public const DB_VERSION = 4;
+	public const DB_VERSION = 1;
 
 	/**
 	 * Get the list of all Stampy table names (prefixed).

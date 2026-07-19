@@ -1,6 +1,6 @@
 <?php
 /**
- * Integration tests for PendingSignupRepository and migration runner.
+ * Integration tests for PendingSignupRepository.
  *
  * @package Stampy
  */
@@ -10,14 +10,13 @@ declare( strict_types=1 );
 namespace Stampy\Tests\Integration;
 
 use Stampy\Installer;
-use Stampy\Migrations;
 use Stampy\Repositories\PendingSignupRepository;
 use Stampy\Repositories\SubscriberRepository;
 use Stampy\Schema;
 use WP_UnitTestCase;
 
 /**
- * Tests pending signups, token handling, expiry purge, and migration jumps.
+ * Tests pending signups, token handling, and expiry purge.
  */
 class PendingSignupAndMigrationTest extends WP_UnitTestCase {
 
@@ -157,44 +156,5 @@ class PendingSignupAndMigrationTest extends WP_UnitTestCase {
 
 		$this->assertSame( 1, $deleted );
 		$this->assertNull( $this->pending_repo->find_by_token( $token ) );
-	}
-
-	/**
-	 * Migration runner should set the db_version option.
-	 *
-	 * @return void
-	 */
-	public function test_migration_sets_db_version(): void {
-		$this->assertSame( Schema::DB_VERSION, Migrations::get_stored_version() );
-	}
-
-	/**
-	 * Running migrations when already at the current version should be a no-op.
-	 *
-	 * @return void
-	 */
-	public function test_migration_is_idempotent(): void {
-		$version_before = Migrations::get_stored_version();
-		$result         = Migrations::run();
-		$this->assertSame( $version_before, $result );
-	}
-
-	/**
-	 * Migration runner should handle a jump from version 0 to current.
-	 *
-	 * Simulates a fresh install where the option was never set.
-	 *
-	 * @return void
-	 */
-	public function test_migration_from_zero(): void {
-		// Delete the stored version to simulate a fresh start.
-		delete_option( Migrations::DB_VERSION_OPTION );
-
-		$this->assertSame( 0, Migrations::get_stored_version() );
-
-		$result = Migrations::run();
-
-		$this->assertSame( Schema::DB_VERSION, $result );
-		$this->assertSame( Schema::DB_VERSION, Migrations::get_stored_version() );
 	}
 }

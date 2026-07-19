@@ -10,7 +10,6 @@ declare( strict_types=1 );
 namespace Stampy\Tests\Integration;
 
 use Stampy\Installer;
-use Stampy\Migrations;
 use Stampy\Schema;
 use WP_UnitTestCase;
 
@@ -77,15 +76,6 @@ class SchemaTest extends WP_UnitTestCase {
 		// phpcs:ignore WordPress.DB
 		$count = (int) $wpdb->get_var( "SELECT COUNT(*) FROM $consent_table WHERE version = 1" );
 		$this->assertSame( 1, $count, 'Consent text v1 should not be duplicated.' );
-	}
-
-	/**
-	 * DB version option should be set after activation.
-	 *
-	 * @return void
-	 */
-	public function test_db_version_is_stored(): void {
-		$this->assertSame( Schema::DB_VERSION, Migrations::get_stored_version() );
 	}
 
 	/**

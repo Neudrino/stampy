@@ -124,7 +124,7 @@ final class CampaignSendPage {
 	 */
 	public static function handle_start_send_ajax(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'Unauthorized' ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'stampy' ) ), 403 );
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
@@ -132,13 +132,13 @@ final class CampaignSendPage {
 		$nonce   = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
 
 		if ( ! wp_verify_nonce( $nonce, 'stampy_start_send_' . $post_id ) ) {
-			wp_send_json_error( array( 'message' => 'Security check failed' ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Security check failed', 'stampy' ) ), 403 );
 		}
 		// phpcs:enable
 
 		$post = get_post( $post_id );
 		if ( ! $post instanceof \WP_Post || CampaignPostType::POST_TYPE !== $post->post_type ) {
-			wp_send_json_error( array( 'message' => 'Campaign not found' ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Campaign not found', 'stampy' ) ), 404 );
 		}
 
 		$engine = new SendingEngine();
@@ -158,7 +158,7 @@ final class CampaignSendPage {
 	 */
 	public static function handle_cancel_send_ajax(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'Unauthorized' ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'stampy' ) ), 403 );
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
@@ -166,13 +166,13 @@ final class CampaignSendPage {
 		$nonce   = isset( $_POST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_POST['_wpnonce'] ) ) : '';
 
 		if ( ! wp_verify_nonce( $nonce, 'stampy_cancel_send_' . $post_id ) ) {
-			wp_send_json_error( array( 'message' => 'Security check failed' ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Security check failed', 'stampy' ) ), 403 );
 		}
 		// phpcs:enable
 
 		$post = get_post( $post_id );
 		if ( ! $post instanceof \WP_Post || CampaignPostType::POST_TYPE !== $post->post_type ) {
-			wp_send_json_error( array( 'message' => 'Campaign not found' ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Campaign not found', 'stampy' ) ), 404 );
 		}
 
 		$engine = new SendingEngine();
@@ -192,7 +192,7 @@ final class CampaignSendPage {
 	 */
 	public static function handle_progress_ajax(): void {
 		if ( ! current_user_can( 'manage_options' ) ) {
-			wp_send_json_error( array( 'message' => 'Unauthorized' ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Unauthorized', 'stampy' ) ), 403 );
 		}
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
@@ -200,13 +200,13 @@ final class CampaignSendPage {
 		$nonce   = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 
 		if ( ! wp_verify_nonce( $nonce, 'stampy_progress_' . $post_id ) ) {
-			wp_send_json_error( array( 'message' => 'Security check failed' ), 403 );
+			wp_send_json_error( array( 'message' => __( 'Security check failed', 'stampy' ) ), 403 );
 		}
 		// phpcs:enable
 
 		$post = get_post( $post_id );
 		if ( ! $post instanceof \WP_Post || CampaignPostType::POST_TYPE !== $post->post_type ) {
-			wp_send_json_error( array( 'message' => 'Campaign not found' ), 404 );
+			wp_send_json_error( array( 'message' => __( 'Campaign not found', 'stampy' ) ), 404 );
 		}
 
 		$engine   = new SendingEngine();

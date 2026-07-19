@@ -41,8 +41,7 @@ class Lifecycle {
 	/**
 	 * Activation handler.
 	 *
-	 * - Runs the migration runner (creates/upgrades all tables).
-	 * - Seeds default data (fields, consent text).
+	 * - Runs the installer (creates/upgrades all tables + seeds defaults).
 	 * - Generates the per-site HMAC secret if absent.
 	 * - Registers rewrite rules and flushes them once.
 	 * - Schedules the daily pending-signups purge.
@@ -89,14 +88,14 @@ class Lifecycle {
 	/**
 	 * Plugins_loaded handler.
 	 *
-	 * Compares stored db_version to code version and runs the migration
-	 * runner if behind. This covers plugin updates that never fire the
+	 * Compares stored db_version to code version and runs the installer
+	 * if behind. This covers plugin updates that never fire the
 	 * activation hook (e.g. via WP-CLI or file replacement).
 	 *
 	 * @return void
 	 */
 	public static function on_plugins_loaded(): void {
-		$stored = Migrations::get_stored_version();
+		$stored = (int) get_option( Installer::DB_VERSION_OPTION, 0 );
 		$code   = Schema::DB_VERSION;
 
 		if ( $stored < $code ) {

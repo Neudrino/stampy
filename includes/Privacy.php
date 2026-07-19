@@ -335,15 +335,18 @@ final class Privacy {
 			// Group 6: Campaign clicks (individual click events).
 			$recipient_ids = array_map( 'intval', array_column( $recipients, 'id' ) );
 			if ( count( $recipient_ids ) > 0 ) {
-				$ids_csv = implode( ',', array_map( 'intval', $recipient_ids ) );
+				$ids_placeholders = implode( ',', array_fill( 0, count( $recipient_ids ), '%d' ) );
 				// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared, WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 				$clicks = $wpdb->get_results(
-					"SELECT c.url, c.clicked_at, p.post_title AS campaign_title
+					$wpdb->prepare(
+						"SELECT c.url, c.clicked_at, p.post_title AS campaign_title
 					 FROM $clicks_table c
 					 INNER JOIN $recipients_table r ON r.id = c.recipient_id
 					 LEFT JOIN $posts_table p ON p.ID = r.campaign_id
-					 WHERE c.recipient_id IN ($ids_csv)
-					 ORDER BY c.clicked_at DESC"
+					 WHERE c.recipient_id IN ($ids_placeholders)
+					 ORDER BY c.clicked_at DESC",
+						$recipient_ids
+					)
 				);
 				// phpcs:enable
 
@@ -353,7 +356,7 @@ final class Privacy {
 						$clicks_data[] = array(
 							'name'  => (string) ( $click->campaign_title ?? '' ),
 							'value' => sprintf(
-								/* translators: 1: clicked URL, 2: clicked date */
+							/* translators: 1: clicked URL, 2: clicked date */
 								__( 'Clicked URL: %1$s, Date: %2$s', 'stampy' ),
 								(string) $click->url,
 								(string) $click->clicked_at

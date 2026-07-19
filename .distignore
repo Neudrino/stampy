@@ -2,6 +2,7 @@
 .github
 .wordpress-org
 .wp-env-home
+.wp-env.json
 node_modules
 tests
 dev
@@ -12,6 +13,7 @@ languages/stampy-js.pot
 .editorconfig
 .gitignore
 .nvmrc
+.phpunit.result.cache
 phpcs.xml.dist
 phpstan.neon.dist
 phpstan-baseline.neon
@@ -21,3 +23,14 @@ tsconfig.json
 PROGRESS.md
 PLAN.md
 AGENTS.md
+.husky
+playwright.config.ts
+eslint.config.cjs
+package-lock.json
+composer.lock
+SECURITY.md
+README.md
+test-results
+playwright-report
+vendor/vendor-backup
+**/.gitkeep

@@ -86,6 +86,12 @@ jobs:
       - run: npm ci --legacy-peer-deps
       # Override the WordPress core version per matrix entry. wp-env reads the
       # WP_ENV_CORE environment variable to override the .wp-env.json "core".
+      - name: Generate self-signed Mailpit TLS certs
+        run: |
+          mkdir -p dev/certs
+          openssl req -x509 -newkey rsa:2048 -keyout dev/certs/mailpit-key.pem \
+            -out dev/certs/mailpit-cert.pem -days 365 -nodes \
+            -subj "/CN=localhost"
       - name: Start wp-env (WP ${{ matrix.wp }})
         env:
           WP_ENV_CORE: ${{ matrix.wp == 'latest' && 'WordPress/WordPress' || format('https://wordpress.org/wordpress-{0}.zip', matrix.wp) }}
@@ -116,6 +122,12 @@ jobs:
       - run: npm ci --legacy-peer-deps
       - run: npm run build
       - run: npx playwright install --with-deps chromium
+      - name: Generate self-signed Mailpit TLS certs
+        run: |
+          mkdir -p dev/certs
+          openssl req -x509 -newkey rsa:2048 -keyout dev/certs/mailpit-key.pem \
+            -out dev/certs/mailpit-cert.pem -days 365 -nodes \
+            -subj "/CN=localhost"
       - run: npm run env:start
       - name: Composer install (in container)
         run: npx wp-env run tests-cli --env-cwd=wp-content/plugins/stampy composer install --no-interaction --prefer-dist
@@ -173,7 +185,7 @@ jobs:
       - uses: wordpress/plugin-check-action@v1
         with:
           build-dir: '.'
-          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs,.husky'
+          exclude-directories: 'tests,dev,node_modules,vendor,.github,stubs,.husky,.wordpress-org'
           exclude-files: |
             phpunit.xml.dist
             phpstan.neon.dist

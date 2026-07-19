@@ -2,7 +2,7 @@
 
 Tracking file for phase-by-phase implementation of the plan in `PLAN.md`.
 Each phase lists **requirements fulfilled** and **functional steps taken**.
-Version is frozen at `0.0.1` (never bumped unless explicitly instructed).
+Version is frozen at `unreleased` (never bumped unless explicitly instructed).
 
 ---
 
@@ -2351,6 +2351,183 @@ Status: **COMPLETE** ✓
   `tests-WordPress-PHPUnit`, and `akismet` must be explicitly excluded
   when running against the wp-env mounted plugin directory (these dirs
   exist inside the plugin mount because the entire project dir is mounted).
+
+
+---
+
+## Phase 18 — Pipeline Renaming
+
+Status: **COMPLETE** ✓
+
+### Requirements fulfilled
+
+- [x] All GitHub workflow filenames prefixed with `stampy-` for consistency
+- [x] Documentation updated to reference new workflow names
+
+### What was done
+
+- **Workflow renames:**
+  - `ci.yml` → `stampy-ci.yml` (name: "Stampy CI")
+  - `build-release.yml` → `stampy-release.yml` (name: "Stampy Release")
+  - `deploy-wporg.yml` → `stampy-wp-deployment.yml` (name: "Stampy WP Deployment")
+- **Documentation updates:** `AGENTS.md`, `README.md`, and `PROGRESS.md`
+  updated to reference the new workflow filenames everywhere.
+- **Dev cert cleanup:** `dev/certs/mailpit-cert.pem` and
+  `dev/certs/mailpit-key.pem` removed from git tracking (the `.gitignore`
+  already listed `/dev/certs/`, but the files were committed before the
+  rule was added). The certs remain on disk locally (gitignored) but are
+  no longer in the repo. CI generates them on the fly (see Phase 19).
+
+### Test results
+
+- `validate:fast` green
+- CI workflows trigger correctly under new names
+
+### Gotchas discovered
+
+- **Removing dev certs from git broke CI E2E** — the `mailpit-tests`
+  container configures `MP_SMTP_TLS_CERT` / `MP_SMTP_TLS_KEY` pointing at
+  `dev/certs/*.pem`. When the certs are absent (fresh CI checkout), the
+  container fails to start and port 8026 refuses connections. Fix: CI now
+  generates self-signed certs before `npm run env:start` (see Phase 19).
+- **History rewrite to remove certs changed all SHAs** — the fixup commit
+  amending Phase 6 caused all descendant commits to get new SHAs, making
+  `origin/main` diverge from local `main`. A force-push was needed to
+  reconcile.
+
+---
+
+## Phase 19 — Pre-Publish Review & Cleanup
+
+Status: **COMPLETE** ✓
+
+### Requirements fulfilled
+
+- [x] Thorough pre-publish audit of the entire codebase
+- [x] All SHOULD-FIX issues resolved
+- [x] All NICE-TO-HAVE issues resolved
+- [x] `PLAN.md` updated (Phase 17 condensed, old Phase 18 → post-1.0, new Phases 18 & 19 added)
+- [x] `.pot` file regenerated with new i18n strings
+- [x] CI E2E failure (Mailpit cert missing) fixed
+- [x] Plugin Check failure (hidden files in staged artifact) fixed
+- [x] Production artifact staging switched from denylist to allowlist
+
+### What was done
+
+#### Pre-publish audit findings & fixes
+
+- **`README.md` version inconsistency** — removed the stale "version
+  `0.0.1`" status line and the manual version-bump step (the version is
+  now auto-injected from the git tag by `dev/inject-version.sh`).
+- **Untranslated AJAX error strings** — 9 user-facing strings in
+  `CampaignSendPage.php` (`'Unauthorized'`, `'Security check failed'`,
+  `'Campaign not found'`) wrapped in `__()`. The `.pot` file was
+  regenerated to include them.
+- **Preferences POST form missing nonce** — added
+  `wp_nonce_field('stampy_prefs_' . $subscriber_id, 'stampy_prefs_nonce')`
+  to the preferences form and `check_admin_referer()` in the handler.
+  Defense-in-depth alongside the existing HMAC-signed URL authentication.
+- **`Privacy.php` unprepared `IN()` clause** — converted
+  `IN ($ids_csv)` (safe but not prepared) to `$wpdb->prepare()` with
+  `%d` placeholders, matching the pattern used in
+  `CampaignRecipientRepository`.
+- **Dead code removal (`STAMPY_VERSION` export)** — deleted `src/index.ts`
+  and `src/index.test.ts` (the `STAMPY_VERSION` export was only referenced
+  by its own test, never imported by real code). Updated
+  `dev/inject-version.sh` to remove the `src/index.ts` injection step.
+- **Dead code removal (`Migrations.php`)** — deleted the entire migration
+  runner (`includes/Migrations.php`, 122 lines). Since no published
+  version exists, there are no old database versions to migrate from.
+  `Schema::DB_VERSION` reset from 4 → 1. `Installer::install()` now calls
+  `Schema::install()` directly (idempotent via `dbDelta()`) and updates
+  the stored version option. `Lifecycle::on_plugins_loaded()` reads the
+  option directly instead of via `Migrations::get_stored_version()`.
+  Removed 3 migration-specific tests from
+  `PendingSignupAndMigrationTest.php`, 1 from `SchemaTest.php`, and 1
+  from `SubmissionLogFixTest.php`. (YAGNI: a migration mechanism can be
+  reintroduced when a real schema change requires it.)
+- **`.distignore` tightened** — added `.husky/`, `playwright.config.ts`,
+  `eslint.config.cjs`, `package-lock.json`, `composer.lock`,
+  `SECURITY.md`, `README.md`, and other dev-only files that would have
+  shipped in the production zip.
+
+#### PLAN.md updates
+
+- **Phase 17** condensed — removed implementation details (SVN layout,
+  zip contents, readme validation, Plugin Check integration specifics);
+  kept it abstract and concise.
+- **Old Phase 18 (central form builder)** moved to §10 "Post-1.0 Roadmap"
+  — it was always post-v1 architecture-ready, now correctly categorized.
+- **New Phase 18** added — pipeline renaming (commit `47d7933`).
+- **New Phase 19** added — pre-publish review & cleanup (this phase).
+
+#### CI fixes
+
+- **Mailpit TLS cert generation in CI** — added a "Generate self-signed
+  Mailpit TLS certs" step to both the `integration` and `e2e` jobs in
+  `stampy-ci.yml`. Uses `openssl req -x509` to generate fresh certs into
+  `dev/certs/` before `npm run env:start`. This fixes the E2E failure
+  caused by Phase 18 removing the certs from git.
+- **Plugin Check hidden files fix** — the `stampy-release.yml` workflow
+  was shipping `.wp-env.json` and `includes/.gitkeep` in the production
+  zip (both are hidden files that Plugin Check flags as errors). Fixed by
+  switching from a denylist (`.distignore` with `rsync --exclude-from`)
+  to an allowlist approach (see below).
+
+#### Production artifact staging (allowlist)
+
+- **Problem:** the `stampy-release.yml` workflow used
+  `rsync --exclude-from=.distignore` (denylist). Every new dev-only file
+  added to the repo had to be manually added to `.distignore`, or it
+  would silently ship in production. This caused Plugin Check failures
+  when `.wp-env.json` and `includes/.gitkeep` were missed.
+- **Solution:** replaced the denylist with an explicit allowlist. The
+  "Stage production artifact" step now copies only:
+  - Root files: `stampy.php`, `readme.txt`, `uninstall.php`, `LICENSE`,
+    `.distignore`
+  - Directories: `includes/`, `build/`, `vendor/`, `languages/`, `assets/`
+  - Excludes within `vendor/`: `vendor-backup/`
+  - Excludes within `includes/`: `.gitkeep`
+- **`.distignore` kept** for the `10up/action-wordpress-plugin-deploy@stable`
+  SVN deploy action, which requires it. It's no longer used for zip
+  staging.
+- **Documentation:** updated `AGENTS.md` (new "Production artifact staging"
+  gotcha), `README.md` (build workflow step 4), and the Plugin Check
+  gotcha to reflect the allowlist approach.
+
+### Test results
+
+- `validate:fast` green (75 PHP unit, 22 JS unit, PHPStan level 8, PHPCS)
+- `test:integration:php` green (281 tests, 787 assertions)
+- `test:e2e` green (33 tests, including Plugin Check E2E)
+- `wp i18n make-pot` regenerated (272 strings)
+- `wp-scripts build` compiles cleanly (after `src/index.ts` deletion)
+- Staged artifact verified: only `.distignore` as a hidden file (allowed
+  by Plugin Check's `$allowed_dev_files`)
+
+### Gotchas discovered
+
+- **Plugin Check `hidden_files` check** — flags any file whose basename
+  starts with `.` (except `.distignore` and `.gitignore` which are in
+  `$allowed_dev_files`). The check matches by file path suffix
+  (`str_ends_with($file_path, "/$ignore_file")`), so `exclude-files:
+  .gitkeep` does match `includes/.gitkeep`. But in the release workflow,
+  there are no `exclude-files` — the staged artifact must be clean by
+  construction.
+- **Allowlist vs denylist for production zip** — the denylist approach
+  (`.distignore` with `rsync --exclude-from`) is fragile: new dev files
+  are included by default and must be manually excluded. The allowlist
+  approach (explicit `cp` + per-directory `rsync`) is safer: new dev
+  files are excluded by default. Trade-off: adding a new top-level
+  production file requires updating the `cp` command in the workflow.
+- **`10up/action-wordpress-plugin-deploy@stable` requires `.distignore`**
+  — the SVN deploy action uses `rsync --exclude-from=.distignore`
+  internally, so `.distignore` must be kept even though the release
+  workflow no longer uses it for zip staging.
+- **`rsync` with multiple source directories** — `rsync -a dir1/ dir2/
+  dest/` flattens the structure (contents go directly into `dest/`). Must
+  use separate `rsync` calls per directory: `rsync -a dir1/ dest/dir1/`
+  to preserve the directory structure.
 
 
 

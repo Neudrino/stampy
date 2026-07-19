@@ -266,6 +266,7 @@ final class Rewrites {
 			%s
 			<p>%s: <strong>%s</strong></p>
 			<form method="post" action="%s" id="stampy-prefs-form">
+				%s
 				<ul>%s</ul>
 				<p><button type="submit">%s</button></p>
 				<hr>
@@ -276,6 +277,7 @@ final class Rewrites {
 			esc_html( __( 'Email', 'stampy' ) ),
 			esc_html( $subscriber->email ),
 			esc_url( $current_url ),
+			wp_nonce_field( 'stampy_prefs_' . $subscriber_id, 'stampy_prefs_nonce', true, false ),
 			$lists_html,
 			esc_html( __( 'Save Preferences', 'stampy' ) ),
 			esc_js( __( 'Are you sure you want to unsubscribe from all lists?', 'stampy' ) ),
@@ -299,9 +301,12 @@ final class Rewrites {
 		$list_repo       = new Repositories\ListRepository();
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing
-		// No WordPress nonce needed: this form is only reachable via a
-		// token-authenticated, HMAC-signed URL (verified in the caller).
-		// The subscriber_id is from the rewrite query var, not user input.
+		// HMAC URL re-verifies the signature on POST; the WP nonce is
+		// defense-in-depth against cross-site form submissions.
+		if ( ! check_admin_referer( 'stampy_prefs_' . $subscriber_id, 'stampy_prefs_nonce' ) ) {
+			return '';
+		}
+
 		$opt_out = isset( $_POST['opt_out'] );
 
 		if ( $opt_out ) {
