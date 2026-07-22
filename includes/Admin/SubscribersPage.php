@@ -307,7 +307,8 @@ final class SubscribersPage {
 
 		$status   = isset( $_POST['status'] ) ? sanitize_key( $_POST['status'] ) : 'pending';
 		$list_ids = isset( $_POST['list_ids'] ) ? array_map( 'intval', (array) wp_unslash( $_POST['list_ids'] ) ) : array();
-		$meta     = isset( $_POST['meta'] ) ? (array) wp_unslash( $_POST['meta'] ) : array();
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Values sanitized individually in the loop below before storage.
+		$meta = isset( $_POST['meta'] ) ? (array) wp_unslash( $_POST['meta'] ) : array();
 		// phpcs:enable
 
 		if ( ! in_array( $status, array( 'pending', 'confirmed', 'unsubscribed' ), true ) ) {
