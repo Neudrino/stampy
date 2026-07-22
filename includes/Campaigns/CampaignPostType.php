@@ -140,6 +140,7 @@ final class CampaignPostType {
 			'startSendNonce'  => $post_id > 0 ? wp_create_nonce( 'stampy_start_send_' . $post_id ) : '',
 			'cancelSendNonce' => $post_id > 0 ? wp_create_nonce( 'stampy_cancel_send_' . $post_id ) : '',
 			'progressNonce'   => $post_id > 0 ? wp_create_nonce( 'stampy_progress_' . $post_id ) : '',
+			'previewNonce'    => $post_id > 0 ? wp_create_nonce( 'stampy_preview_' . $post_id ) : '',
 		);
 
 		wp_add_inline_script(

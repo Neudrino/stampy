@@ -8,6 +8,8 @@ tests
 dev
 stubs
 languages/stampy-js.pot
+languages/*.po
+languages/*.mo
 *.bak
 *.orig
 .editorconfig

@@ -35,7 +35,12 @@ final class CampaignPreviewPage {
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended
 		$post_id = isset( $_GET['post_id'] ) ? (int) $_GET['post_id'] : 0;
 		$format  = isset( $_GET['format'] ) ? sanitize_key( $_GET['format'] ) : 'html';
+		$nonce   = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 		// phpcs:enable
+
+		if ( ! wp_verify_nonce( $nonce, 'stampy_preview_' . $post_id ) ) {
+			wp_die( esc_html__( 'Security check failed.', 'stampy' ) );
+		}
 
 		if ( $post_id <= 0 ) {
 			wp_die( esc_html__( 'Invalid campaign ID.', 'stampy' ) );

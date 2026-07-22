@@ -70,7 +70,7 @@ jobs:
             build/ /tmp/stampy/build/
           rsync -a --exclude='vendor-backup' \
             vendor/ /tmp/stampy/vendor/
-          rsync -a \
+          rsync -a --exclude='*.po' --exclude='*.mo' \
             languages/ /tmp/stampy/languages/
           rsync -a \
             assets/ /tmp/stampy/assets/

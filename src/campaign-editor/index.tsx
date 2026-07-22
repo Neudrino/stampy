@@ -44,6 +44,8 @@ function CampaignSidebar() {
 		'';
 	const progressNonce =
 		( typeof window !== 'undefined' && window.stampy?.progressNonce ) || '';
+	const previewNonce =
+		( typeof window !== 'undefined' && window.stampy?.previewNonce ) || '';
 
 	const postId = useSelect(
 		( select ) =>
@@ -243,10 +245,12 @@ function CampaignSidebar() {
 	}
 
 	const previewUrl =
-		previewBase && postId ? `${ previewBase }&post_id=${ postId }` : '';
+		previewBase && postId
+			? `${ previewBase }&post_id=${ postId }&_wpnonce=${ previewNonce }`
+			: '';
 	const previewTextUrl =
 		previewBase && postId
-			? `${ previewBase }&post_id=${ postId }&format=text`
+			? `${ previewBase }&post_id=${ postId }&format=text&_wpnonce=${ previewNonce }`
 			: '';
 
 	const displayProgress = progress || {
