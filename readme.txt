@@ -127,4 +127,4 @@ When enabled, the Friendly Captcha widget script is loaded from the Friendly Cap
 * Submission log (consent audit trail) with searchable admin viewer.
 * GDPR personal-data export and erase (including submission log entries).
 * Preference center and one-click unsubscribe (RFC 8058).
-* German (de_DE) translation.
+* Translation-ready with .pot template.
