@@ -72,6 +72,13 @@ final class Rewrites {
 		add_filter( 'query_vars', array( self::class, 'add_query_vars' ) );
 		add_action( 'init', array( self::class, 'add_rewrite_rules' ) );
 		add_action( 'template_redirect', array( self::class, 'handle_virtual_pages' ) );
+
+		wp_register_style(
+			'stampy-frontend-page',
+			plugins_url( 'assets/css/frontend-page.css', PLUGIN_FILE ),
+			array(),
+			VERSION
+		);
 	}
 
 	/**
@@ -441,6 +448,7 @@ final class Rewrites {
 	private static function render_html_page( string $title, string $body, bool $escape = true ): void {
 		$body_html = $escape ? wpautop( esc_html( $body ) ) : $body;
 
+		// phpcs:disable WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- This is a standalone HTML document (virtual endpoint) rendered after template_redirect; wp_head() and wp_enqueue_style() cannot fire here. The stylesheet is registered via wp_register_style() in register() and referenced via <link> for cache-busting.
 		printf(
 			'<!DOCTYPE html>
 <html %s>
@@ -448,12 +456,7 @@ final class Rewrites {
 	<meta charset="%s">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
-	<style>
-		body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; max-width: 600px; margin: 40px auto; padding: 0 20px; color: #333; }
-		h1 { color: #2271b1; }
-		.stampy-notice { padding: 12px 16px; border-radius: 4px; margin: 16px 0; background: #e7f3ff; border: 1px solid #2271b1; }
-		.stampy-notice .stampy-success { color: #00a32a; }
-	</style>
+	<link rel="stylesheet" href="%s">
 </head>
 <body>
 	%s
@@ -462,8 +465,10 @@ final class Rewrites {
 			esc_attr( get_language_attributes() ),
 			esc_attr( get_bloginfo( 'charset' ) ),
 			esc_html( $title ),
+			esc_url( plugins_url( 'assets/css/frontend-page.css', PLUGIN_FILE ) . '?ver=' . VERSION ),
 			$body_html // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		);
+		// phpcs:enable
 
 		exit;
 	}
