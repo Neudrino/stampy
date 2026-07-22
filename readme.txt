@@ -76,7 +76,28 @@ Stampy provides tools that help you meet GDPR requirements, but compliance depen
 
 = Can I use a different language? =
 
-Stampy is translation-ready and ships with a German (de_DE) translation. The `.pot` file is in the `languages/` directory.
+Stampy is translation-ready. Once hosted on WordPress.org, community translations are available via translate.wordpress.org.
+
+== External Services ==
+
+Stampy optionally integrates with two third-party captcha services to protect your signup form from automated bot submissions. Both are disabled by default and only activated when you configure site and secret keys in **Stampy → Settings**. No data is sent to any external service unless you explicitly enable and configure one of these captcha providers.
+
+= Cloudflare Turnstile =
+
+When enabled, the Cloudflare Turnstile widget script is loaded from Cloudflare's servers on pages containing the Stampy Signup block. The widget collects interaction data from the visitor's browser (including mouse movements, keyboard timing, and other behavioral signals) and sends it to Cloudflare for bot detection. When the form is submitted, the Turnstile token is verified server-side via Cloudflare's siteverify API, which sends the token, the configured secret key, and the visitor's IP address to Cloudflare.
+
+- Service: https://developers.cloudflare.com/turnstile/
+- Terms of Service: https://www.cloudflare.com/website-terms/
+- Privacy Policy: https://www.cloudflare.com/privacypolicy/
+- Turnstile Privacy Addendum: https://www.cloudflare.com/turnstile-privacy-policy/
+
+= Friendly Captcha =
+
+When enabled, the Friendly Captcha widget script is loaded from the Friendly Captcha CDN on pages containing the Stampy Signup block. The widget generates a proof-of-work puzzle that is solved in the visitor's browser using its computing resources. When the form is submitted, the solution is verified server-side via Friendly Captcha's siteverify API, which sends the solution and the configured API key to Friendly Captcha.
+
+- Service: https://friendlycaptcha.com/
+- Terms of Service: https://friendlycaptcha.com/legal/terms
+- Privacy Policy: https://friendlycaptcha.com/legal/privacy/
 
 == Screenshots ==
 
