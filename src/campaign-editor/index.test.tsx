@@ -103,6 +103,7 @@ describe( 'CampaignSidebar', () => {
 			startSendNonce: 'start-nonce',
 			cancelSendNonce: 'cancel-nonce',
 			progressNonce: 'progress-nonce',
+			previewNonce: 'preview-nonce',
 		};
 		// Re-import to trigger registerPlugin with fresh mocks.
 		jest.isolateModules( () => {

@@ -448,7 +448,8 @@ final class Rewrites {
 	private static function render_html_page( string $title, string $body, bool $escape = true ): void {
 		$body_html = $escape ? wpautop( esc_html( $body ) ) : $body;
 
-		// phpcs:disable WordPress.WP.EnqueuedResources.NonEnqueuedStylesheet -- This is a standalone HTML document (virtual endpoint) rendered after template_redirect; wp_head() and wp_enqueue_style() cannot fire here. The stylesheet is registered via wp_register_style() in register() and referenced via <link> for cache-busting.
+		wp_enqueue_style( 'stampy-frontend-page' );
+
 		printf(
 			'<!DOCTYPE html>
 <html %s>
@@ -456,19 +457,22 @@ final class Rewrites {
 	<meta charset="%s">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>%s</title>
-	<link rel="stylesheet" href="%s">
-</head>
+	',
+			esc_attr( get_language_attributes() ),
+			esc_attr( get_bloginfo( 'charset' ) ),
+			esc_html( $title )
+		);
+
+		wp_print_styles( 'stampy-frontend-page' );
+
+		printf(
+			'</head>
 <body>
 	%s
 </body>
 </html>',
-			esc_attr( get_language_attributes() ),
-			esc_attr( get_bloginfo( 'charset' ) ),
-			esc_html( $title ),
-			esc_url( plugins_url( 'assets/css/frontend-page.css', PLUGIN_FILE ) . '?ver=' . VERSION ),
 			$body_html // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 		);
-		// phpcs:enable
 
 		exit;
 	}

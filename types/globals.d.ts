@@ -45,6 +45,7 @@ declare global {
 		startSendNonce?: string;
 		cancelSendNonce?: string;
 		progressNonce?: string;
+		previewNonce?: string;
 	}
 
 	interface Window {
