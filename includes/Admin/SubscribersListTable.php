@@ -445,6 +445,10 @@ class SubscribersListTable extends WP_List_Table {
 			return;
 		}
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		if ( 'delete' !== $action || ! isset( $_GET['subscriber_id'] ) ) {
 			return;
 		}

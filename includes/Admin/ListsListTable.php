@@ -206,6 +206,10 @@ class ListsListTable extends WP_List_Table {
 			return;
 		}
 
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return;
+		}
+
 		$repo = new ListRepository();
 		$ids  = array();
 
