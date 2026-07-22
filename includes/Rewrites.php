@@ -235,7 +235,7 @@ final class Rewrites {
 
 		// Handle POST: process preference updates.
 		$notice = '';
-		if ( 'POST' === $_SERVER['REQUEST_METHOD'] ) {
+		if ( isset( $_SERVER['REQUEST_METHOD'] ) && 'POST' === $_SERVER['REQUEST_METHOD'] ) {
 			$notice = self::handle_preferences_post( $subscriber_id );
 		}
 
@@ -332,7 +332,7 @@ final class Rewrites {
 			);
 		}
 
-		$raw_lists = $_POST['lists'] ?? array();
+		$raw_lists = isset( $_POST['lists'] ) ? (array) wp_unslash( $_POST['lists'] ) : array();
 		if ( ! is_array( $raw_lists ) ) {
 			$raw_lists = array();
 		}

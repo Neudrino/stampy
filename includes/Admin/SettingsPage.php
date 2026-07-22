@@ -35,7 +35,7 @@ final class SettingsPage {
 		$settings = SmtpSettings::get();
 
 		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- Display-only GET param.
-		$updated  = isset( $_GET['updated'] ) ? (string) $_GET['updated'] : '';
+		$updated  = isset( $_GET['updated'] ) ? sanitize_text_field( wp_unslash( $_GET['updated'] ) ) : '';
 		$test_err = isset( $_GET['test_error'] ) ? sanitize_text_field( wp_unslash( $_GET['test_error'] ) ) : '';
 		// phpcs:enable
 
@@ -250,14 +250,14 @@ final class SettingsPage {
 		check_admin_referer( 'stampy_save_smtp_settings', 'stampy_smtp_nonce' );
 
 		$input = array(
-			'host'       => isset( $_POST['smtp_host'] ) ? wp_unslash( $_POST['smtp_host'] ) : '',
+			'host'       => isset( $_POST['smtp_host'] ) ? sanitize_text_field( wp_unslash( $_POST['smtp_host'] ) ) : '',
 			'port'       => isset( $_POST['smtp_port'] ) ? (int) $_POST['smtp_port'] : 587,
-			'encryption' => isset( $_POST['smtp_encryption'] ) ? wp_unslash( $_POST['smtp_encryption'] ) : 'tls',
+			'encryption' => isset( $_POST['smtp_encryption'] ) ? sanitize_key( wp_unslash( $_POST['smtp_encryption'] ) ) : 'tls',
 			'auth'       => isset( $_POST['smtp_auth'] ),
-			'username'   => isset( $_POST['smtp_username'] ) ? wp_unslash( $_POST['smtp_username'] ) : '',
-			'password'   => isset( $_POST['smtp_password'] ) ? (string) wp_unslash( $_POST['smtp_password'] ) : '',
-			'from_email' => isset( $_POST['smtp_from_email'] ) ? wp_unslash( $_POST['smtp_from_email'] ) : '',
-			'from_name'  => isset( $_POST['smtp_from_name'] ) ? wp_unslash( $_POST['smtp_from_name'] ) : '',
+			'username'   => isset( $_POST['smtp_username'] ) ? sanitize_text_field( wp_unslash( $_POST['smtp_username'] ) ) : '',
+			'password'   => isset( $_POST['smtp_password'] ) ? wp_unslash( $_POST['smtp_password'] ) : '',
+			'from_email' => isset( $_POST['smtp_from_email'] ) ? sanitize_email( wp_unslash( $_POST['smtp_from_email'] ) ) : '',
+			'from_name'  => isset( $_POST['smtp_from_name'] ) ? sanitize_text_field( wp_unslash( $_POST['smtp_from_name'] ) ) : '',
 		);
 		// phpcs:enable
 
