@@ -51,8 +51,6 @@ if ( is_readable( $stampy_autoload ) ) {
 function bootstrap(): void {
 	load_action_scheduler();
 
-	load_plugin_textdomain( 'stampy', false, dirname( plugin_basename( PLUGIN_FILE ) ) . '/languages' );
-
 	Lifecycle::register();
 	Rewrites::register();
 	Rest\RestApi::register();
