@@ -90,16 +90,18 @@ final class SignupBlock {
 		}
 
 		return array(
-			'restUrl'                => esc_url_raw( rest_url( 'stampy/v1' ) ),
-			'restNonce'              => wp_create_nonce( 'wp_rest' ),
-			'lists'                  => $lists_formatted,
-			'fields'                 => $fields_formatted,
-			'consentText'            => $consent_text,
-			'quizQuestions'          => QuizGuard::get_questions(),
-			'turnstileEnabled'       => TurnstileGuard::is_enabled(),
-			'turnstileSiteKey'       => TurnstileGuard::get_site_key(),
-			'friendlyCaptchaEnabled' => FriendlyCaptchaGuard::is_enabled(),
-			'friendlyCaptchaSiteKey' => FriendlyCaptchaGuard::get_site_key(),
+			'restUrl'                        => esc_url_raw( rest_url( 'stampy/v1' ) ),
+			'restNonce'                      => wp_create_nonce( 'wp_rest' ),
+			'lists'                          => $lists_formatted,
+			'fields'                         => $fields_formatted,
+			'consentText'                    => $consent_text,
+			'quizQuestions'                  => QuizGuard::get_questions(),
+			'turnstileEnabled'               => TurnstileGuard::is_enabled(),
+			'turnstileSiteKey'               => TurnstileGuard::get_site_key(),
+			'friendlyCaptchaEnabled'         => FriendlyCaptchaGuard::is_enabled(),
+			'friendlyCaptchaSiteKey'         => FriendlyCaptchaGuard::get_site_key(),
+			'friendlyCaptchaScriptUrl'       => esc_url_raw( plugins_url( 'assets/vendor/friendly-captcha/site.min.js', PLUGIN_FILE ) ),
+			'friendlyCaptchaScriptCompatUrl' => esc_url_raw( plugins_url( 'assets/vendor/friendly-captcha/site.compat.min.js', PLUGIN_FILE ) ),
 		);
 	}
 
