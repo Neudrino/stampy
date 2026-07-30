@@ -93,7 +93,7 @@ When enabled, the Cloudflare Turnstile widget script is loaded from Cloudflare's
 
 = Friendly Captcha =
 
-When enabled, the Friendly Captcha widget script is loaded from the Friendly Captcha CDN on pages containing the Stampy Signup block. The widget generates a proof-of-work puzzle that is solved in the visitor's browser using its computing resources. When the form is submitted, the solution is verified server-side via Friendly Captcha's siteverify API, which sends the solution and the configured API key to Friendly Captcha.
+When enabled, the Friendly Captcha widget script is bundled and served locally from the plugin's `assets/vendor/friendly-captcha/` directory (no external CDN dependency). The widget generates a proof-of-work puzzle that is solved in the visitor's browser using its computing resources. When the form is submitted, the solution is verified server-side via Friendly Captcha's siteverify API, which sends the solution and the configured API key to Friendly Captcha.
 
 - Service: https://friendlycaptcha.com/
 - Terms of Service: https://friendlycaptcha.com/legal/terms

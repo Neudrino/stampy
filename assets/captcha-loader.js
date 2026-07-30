@@ -14,6 +14,9 @@
 		document.head.appendChild( script );
 	}
 
+	// Cloudflare Turnstile widget is a proprietary service script that must be
+	// loaded from Cloudflare's servers (it collects behavioral signals and is
+	// not self-hostable). This is a permitted service dependency.
 	if (
 		window.stampy &&
 		window.stampy.turnstileEnabled &&
@@ -22,14 +25,21 @@
 		loadScript( 'https://challenges.cloudflare.com/turnstile/v0/api.js' );
 	}
 
+	// Friendly Captcha widget script is self-hosted (MPL-2.0 licensed SDK) to
+	// avoid an external CDN dependency. The URL is provided by PHP.
 	if (
 		window.stampy &&
 		window.stampy.friendlyCaptchaEnabled &&
-		window.stampy.friendlyCaptchaSiteKey
+		window.stampy.friendlyCaptchaSiteKey &&
+		window.stampy.friendlyCaptchaScriptUrl
 	) {
-		loadScript(
-			'https://cdn.jsdelivr.net/npm/@friendlycaptcha/[email protected]/site.min.js',
-			{ type: 'module' }
-		);
+		loadScript( window.stampy.friendlyCaptchaScriptUrl, {
+			type: 'module',
+		} );
+		if ( window.stampy.friendlyCaptchaScriptCompatUrl ) {
+			loadScript( window.stampy.friendlyCaptchaScriptCompatUrl, {
+				nomodule: '',
+			} );
+		}
 	}
 } )();
