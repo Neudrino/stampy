@@ -1,96 +1,85 @@
 parameters:
 	ignoreErrors:
 		-
-			message: "#^Parameter \\#1 \\$text of function esc_html expects string, string\\|false given\\.$#"
+			message: '#^Parameter \#1 \$text of function esc_html expects string, string\|false given\.$#'
+			identifier: argument.type
 			count: 1
 			path: includes/Admin/SubmissionLogListTable.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 16
 			path: includes/Repositories/CampaignRecipientRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:query\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
 			count: 5
 			path: includes/Repositories/CampaignRecipientRepository.php
 
 		-
-			message: "#^Method Stampy\\\\Repositories\\\\ConsentTextRepository\\:\\:all\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 1
 			path: includes/Repositories/ConsentTextRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
-			count: 1
-			path: includes/Repositories/ConsentTextRepository.php
-
-		-
-			message: "#^Method Stampy\\\\Repositories\\\\FieldRepository\\:\\:all\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 2
 			path: includes/Repositories/FieldRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
-			count: 2
-			path: includes/Repositories/FieldRepository.php
-
-		-
-			message: "#^Method Stampy\\\\Repositories\\\\ListRepository\\:\\:all\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
-			count: 1
-			path: includes/Repositories/ListRepository.php
-
-		-
-			message: "#^Method Stampy\\\\Repositories\\\\ListRepository\\:\\:get_list_subscribers\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
-			count: 1
-			path: includes/Repositories/ListRepository.php
-
-		-
-			message: "#^Method Stampy\\\\Repositories\\\\ListRepository\\:\\:get_subscriber_lists\\(\\) should return array\\<int, stdClass\\> but returns array\\<int, stdClass\\>\\|null\\.$#"
-			count: 1
-			path: includes/Repositories/ListRepository.php
-
-		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 6
 			path: includes/Repositories/ListRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 6
 			path: includes/Repositories/PendingSignupRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:query\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
 			count: 2
 			path: includes/Repositories/PendingSignupRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 8
 			path: includes/Repositories/SubmissionLogRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:query\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
 			count: 2
 			path: includes/Repositories/SubmissionLogRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 4
 			path: includes/Repositories/SubscriberMetaRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:query\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
 			count: 1
 			path: includes/Repositories/SubscriberMetaRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:prepare\\(\\) expects literal\\-string, non\\-falsy\\-string given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
 			count: 12
 			path: includes/Repositories/SubscriberRepository.php
 
 		-
-			message: "#^Parameter \\#1 \\$query of method wpdb\\:\\:query\\(\\) expects string, string\\|null given\\.$#"
+			message: '#^Parameter \#1 \$query of method wpdb\:\:query\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
 			count: 7
 			path: includes/Repositories/SubscriberRepository.php

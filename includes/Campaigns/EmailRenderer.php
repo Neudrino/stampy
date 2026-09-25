@@ -182,7 +182,6 @@ final class EmailRenderer {
 		}
 
 		$url   = $this->ensure_absolute_url( $url );
-		$alt   = is_string( $alt ) ? $alt : '';
 		$width = is_numeric( $width ) ? ' style="width:' . (int) $width . 'px;max-width:100%;height:auto;"' : ' style="max-width:100%;height:auto;"';
 
 		return '<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 16px 0;"><tr><td><img src="' . esc_url( $url ) . '" alt="' . esc_attr( $alt ) . '"' . $width . ' /></td></tr></table>';
