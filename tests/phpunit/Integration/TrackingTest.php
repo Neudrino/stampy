@@ -53,6 +53,9 @@ final class TrackingTest extends WP_UnitTestCase {
 		unset( $GLOBALS['phpmailer_mock_sent'] );
 
 		TrackingSettings::set_globally_enabled( false );
+
+		// These tests exercise the personalized (non-anonymous) flow.
+		TrackingSettings::set_anonymous( false );
 	}
 
 	/**
@@ -62,6 +65,8 @@ final class TrackingTest extends WP_UnitTestCase {
 	 */
 	protected function tearDown(): void {
 		TrackingSettings::set_globally_enabled( false );
+		// Restore the default (anonymous tracking on).
+		TrackingSettings::set_anonymous( true );
 		unset( $GLOBALS['phpmailer_mock_sent'] );
 		parent::tearDown();
 	}

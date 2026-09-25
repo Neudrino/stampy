@@ -98,7 +98,12 @@ class Lifecycle {
 		$stored = (int) get_option( Installer::DB_VERSION_OPTION, 0 );
 		$code   = Schema::DB_VERSION;
 
-		if ( $stored < $code ) {
+		// Run the installer on any mismatch, not only when behind:
+		// a downgrade or a version reset (e.g. during development) leaves
+		// a stored version higher than the code version, and schema
+		// additions for the current version would never be applied.
+		// Schema::install() is idempotent (dbDelta + CREATE TABLE IF EXISTS).
+		if ( $stored !== $code ) {
 			Installer::install();
 		}
 	}

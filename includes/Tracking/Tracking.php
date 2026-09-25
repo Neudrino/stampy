@@ -64,6 +64,16 @@ final class Tracking {
 	public const CLICK_SIG_VAR = 'stampy_clk_sig';
 
 	/**
+	 * Query var for the anonymous open-tracking subject hash.
+	 */
+	public const OPEN_H_VAR = 'stampy_trk_h';
+
+	/**
+	 * Query var for the anonymous click-tracking subject hash.
+	 */
+	public const CLICK_H_VAR = 'stampy_clk_h';
+
+	/**
 	 * Build the open-tracking pixel URL for a recipient.
 	 *
 	 * @param int $recipient_id  Recipient row ID.
@@ -71,6 +81,26 @@ final class Tracking {
 	 * @return string
 	 */
 	public function build_open_pixel_url( int $recipient_id, int $campaign_id ): string {
+		if ( TrackingSettings::is_anonymous() ) {
+			$subject_hash = self::subject_hash( $recipient_id, $campaign_id );
+
+			$signature = Security::sign(
+				array(
+					'c' => $campaign_id,
+					'h' => $subject_hash,
+				)
+			);
+
+			return add_query_arg(
+				array(
+					self::OPEN_C_VAR   => $campaign_id,
+					self::OPEN_H_VAR   => $subject_hash,
+					self::OPEN_SIG_VAR => $signature,
+				),
+				home_url( '/' )
+			);
+		}
+
 		$params = array(
 			'r' => $recipient_id,
 			'c' => $campaign_id,
@@ -97,6 +127,28 @@ final class Tracking {
 	 * @return string
 	 */
 	public function build_click_url( int $recipient_id, int $campaign_id, string $destination ): string {
+		if ( TrackingSettings::is_anonymous() ) {
+			$subject_hash = self::subject_hash( $recipient_id, $campaign_id );
+
+			$signature = Security::sign(
+				array(
+					'c' => $campaign_id,
+					'h' => $subject_hash,
+					'u' => $destination,
+				)
+			);
+
+			return add_query_arg(
+				array(
+					self::CLICK_C_VAR   => $campaign_id,
+					self::CLICK_H_VAR   => $subject_hash,
+					self::CLICK_U_VAR   => rawurlencode( $destination ),
+					self::CLICK_SIG_VAR => $signature,
+				),
+				home_url( '/' )
+			);
+		}
+
 		$params = array(
 			'r' => $recipient_id,
 			'c' => $campaign_id,
@@ -113,6 +165,27 @@ final class Tracking {
 				self::CLICK_SIG_VAR => $signature,
 			),
 			home_url( '/' )
+		);
+	}
+
+	/**
+	 * Compute the anonymous subject hash for a recipient/campaign pair.
+	 *
+	 * Keyed HMAC over the recipient and campaign IDs. The hash is stored
+	 * in the anonymous event table for deduplication (unique persons)
+	 * but is not reversible and is never linked to a subscriber row.
+	 * The campaign ID is part of the input so hashes cannot be
+	 * correlated across campaigns.
+	 *
+	 * @param int $recipient_id Recipient row ID.
+	 * @param int $campaign_id  Campaign post ID.
+	 * @return string 64-character hex hash.
+	 */
+	public static function subject_hash( int $recipient_id, int $campaign_id ): string {
+		return hash_hmac(
+			'sha256',
+			'stampy_tracking_subject|' . $recipient_id . '|' . $campaign_id,
+			Security::get_secret()
 		);
 	}
 
@@ -215,6 +288,44 @@ final class Tracking {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Verify an anonymous open-tracking signature.
+	 *
+	 * @param int    $campaign_id  Campaign post ID.
+	 * @param string $subject_hash Anonymous subject hash.
+	 * @param string $signature    HMAC signature.
+	 * @return bool
+	 */
+	public static function verify_open_anonymous_signature( int $campaign_id, string $subject_hash, string $signature ): bool {
+		return Security::verify(
+			array(
+				'c' => $campaign_id,
+				'h' => $subject_hash,
+			),
+			$signature
+		);
+	}
+
+	/**
+	 * Verify an anonymous click-tracking signature.
+	 *
+	 * @param int    $campaign_id  Campaign post ID.
+	 * @param string $subject_hash Anonymous subject hash.
+	 * @param string $destination  Original destination URL.
+	 * @param string $signature    HMAC signature.
+	 * @return bool
+	 */
+	public static function verify_click_anonymous_signature( int $campaign_id, string $subject_hash, string $destination, string $signature ): bool {
+		return Security::verify(
+			array(
+				'c' => $campaign_id,
+				'h' => $subject_hash,
+				'u' => $destination,
+			),
+			$signature
+		);
 	}
 
 	/**

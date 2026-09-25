@@ -91,8 +91,10 @@ test.describe.serial( 'Tracking', () => {
 			'`
 		);
 
-		// Enable tracking globally.
+		// Enable tracking globally. Disable the anonymous default so
+		// this spec exercises the personalized (per-recipient) flow.
 		wpCli( `wp eval 'update_option( "stampy_tracking_enabled", "1" );'` );
+		wpCli( `wp eval 'update_option( "stampy_tracking_anonymous", "0" );'` );
 
 		// Create a campaign with a link.
 		const listId = process.env.STAMPY_E2E_LIST_ID || '1';
@@ -190,5 +192,6 @@ test.describe.serial( 'Tracking', () => {
 
 		// Clean up: disable tracking.
 		wpCli( `wp eval 'delete_option( "stampy_tracking_enabled" );'` );
+		wpCli( `wp eval 'delete_option( "stampy_tracking_anonymous" );'` );
 	} );
 } );

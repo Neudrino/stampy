@@ -197,6 +197,14 @@ final class SendingEngine {
 		update_post_meta( $campaign_id, self::META_SUBJECT_SNAPSHOT, $subject );
 		update_post_meta( $campaign_id, self::META_STARTED_AT, current_time( 'mysql', true ) );
 
+		// Snapshot the tracking mode that this send will use — the
+		// campaign overview shows this instead of the current
+		// configuration, which may have changed since.
+		TrackingSettings::set_campaign_sent_mode(
+			$campaign_id,
+			TrackingSettings::resolve_current_mode( $campaign_id )
+		);
+
 		CampaignPostType::set_status( $campaign_id, 'sending' );
 
 		do_action( 'stampy_campaign_send_started', $campaign_id, $queued );

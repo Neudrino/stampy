@@ -20,6 +20,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 use Stampy\Repositories\CampaignRecipientRepository;
+use Stampy\Repositories\CampaignTrackingEventRepository;
 
 /**
  * Registers and handles tracking endpoints.
@@ -51,6 +52,8 @@ final class TrackingEndpoints {
 		$vars[] = Tracking::CLICK_C_VAR;
 		$vars[] = Tracking::CLICK_U_VAR;
 		$vars[] = Tracking::CLICK_SIG_VAR;
+		$vars[] = Tracking::OPEN_H_VAR;
+		$vars[] = Tracking::CLICK_H_VAR;
 		return $vars;
 	}
 
@@ -81,6 +84,18 @@ final class TrackingEndpoints {
 	 * @return void
 	 */
 	public static function handle_requests(): void {
+		$open_h = get_query_var( Tracking::OPEN_H_VAR );
+		if ( '' !== $open_h ) {
+			self::handle_open_anonymous();
+			return;
+		}
+
+		$click_h = get_query_var( Tracking::CLICK_H_VAR );
+		if ( '' !== $click_h ) {
+			self::handle_click_anonymous();
+			return;
+		}
+
 		$open_r = get_query_var( Tracking::OPEN_R_VAR );
 		if ( '' !== $open_r ) {
 			self::handle_open();
@@ -92,6 +107,116 @@ final class TrackingEndpoints {
 			self::handle_click();
 			return;
 		}
+	}
+
+	/**
+	 * Handle an anonymous open-tracking pixel request.
+	 *
+	 * Verifies the signature, records an anonymous open event, and
+	 * serves a 1×1 transparent GIF.
+	 *
+	 * @return void
+	 */
+	private static function handle_open_anonymous(): void {
+		$campaign_id  = (int) get_query_var( Tracking::OPEN_C_VAR );
+		$subject_hash = (string) get_query_var( Tracking::OPEN_H_VAR );
+		$signature    = (string) get_query_var( Tracking::OPEN_SIG_VAR );
+
+		if ( ! Tracking::verify_open_anonymous_signature( $campaign_id, $subject_hash, $signature ) ) {
+			http_response_code( 404 );
+			exit;
+		}
+
+		if ( ! self::process_open_anonymous( $campaign_id, $subject_hash ) ) {
+			http_response_code( 404 );
+			exit;
+		}
+
+		self::serve_pixel();
+	}
+
+	/**
+	 * Process an anonymous open-tracking event.
+	 *
+	 * Records an aggregate open event keyed by the subject hash. No
+	 * recipient identity is stored. Separated from handle_open_anonymous()
+	 * for testability (no exit).
+	 *
+	 * @param int    $campaign_id  Campaign post ID.
+	 * @param string $subject_hash Keyed HMAC subject hash.
+	 * @return bool True if the open was recorded.
+	 */
+	public static function process_open_anonymous( int $campaign_id, string $subject_hash ): bool {
+		if ( null === get_post( $campaign_id ) ) {
+			return false;
+		}
+
+		( new CampaignTrackingEventRepository() )->record_open( $campaign_id, $subject_hash );
+
+		do_action( 'stampy_campaign_email_opened', $campaign_id, 0 );
+
+		return true;
+	}
+
+	/**
+	 * Handle an anonymous click-tracking redirect request.
+	 *
+	 * Verifies the signature, records an anonymous click event, and
+	 * 302-redirects to the original destination URL.
+	 *
+	 * @return void
+	 */
+	private static function handle_click_anonymous(): void {
+		$campaign_id  = (int) get_query_var( Tracking::CLICK_C_VAR );
+		$subject_hash = (string) get_query_var( Tracking::CLICK_H_VAR );
+		$sig          = (string) get_query_var( Tracking::CLICK_SIG_VAR );
+		$dest_raw     = (string) get_query_var( Tracking::CLICK_U_VAR );
+
+		$destination = '' !== $dest_raw ? rawurldecode( $dest_raw ) : '';
+
+		if ( '' === $destination ) {
+			http_response_code( 404 );
+			exit;
+		}
+
+		if ( ! Tracking::verify_click_anonymous_signature( $campaign_id, $subject_hash, $destination, $sig ) ) {
+			http_response_code( 404 );
+			exit;
+		}
+
+		$destination = self::process_click_anonymous( $campaign_id, $subject_hash, $destination );
+
+		if ( false === $destination ) {
+			http_response_code( 404 );
+			exit;
+		}
+
+		wp_safe_redirect( $destination, 302 );
+		exit;
+	}
+
+	/**
+	 * Process an anonymous click-tracking event.
+	 *
+	 * Records an aggregate click event keyed by the subject hash. No
+	 * recipient identity is stored. Separated from handle_click_anonymous()
+	 * for testability (no redirect/exit).
+	 *
+	 * @param int    $campaign_id  Campaign post ID.
+	 * @param string $subject_hash Keyed HMAC subject hash.
+	 * @param string $destination  Original destination URL.
+	 * @return string|false Destination URL on success, false on failure.
+	 */
+	public static function process_click_anonymous( int $campaign_id, string $subject_hash, string $destination ): string|false {
+		if ( null === get_post( $campaign_id ) ) {
+			return false;
+		}
+
+		( new CampaignTrackingEventRepository() )->record_click( $campaign_id, $subject_hash, $destination );
+
+		do_action( 'stampy_campaign_link_clicked', $campaign_id, 0, $destination );
+
+		return $destination;
 	}
 
 	/**

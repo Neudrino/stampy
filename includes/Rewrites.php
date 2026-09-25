@@ -72,13 +72,6 @@ final class Rewrites {
 		add_filter( 'query_vars', array( self::class, 'add_query_vars' ) );
 		add_action( 'init', array( self::class, 'add_rewrite_rules' ) );
 		add_action( 'template_redirect', array( self::class, 'handle_virtual_pages' ) );
-
-		wp_register_style(
-			'stampy-frontend-page',
-			plugins_url( 'assets/css/frontend-page.css', PLUGIN_FILE ),
-			array(),
-			VERSION
-		);
 	}
 
 	/**
@@ -445,7 +438,15 @@ final class Rewrites {
 	private static function render_html_page( string $title, string $body, bool $escape = true ): void {
 		$body_html = $escape ? wpautop( esc_html( $body ) ) : $body;
 
-		wp_enqueue_style( 'stampy-frontend-page' );
+		// Register and enqueue here rather than at bootstrap: the virtual
+		// page is rendered on template_redirect (after init), whereas
+		// registering during plugin load triggers a _doing_it_wrong notice.
+		wp_enqueue_style(
+			'stampy-frontend-page',
+			plugins_url( 'assets/css/frontend-page.css', PLUGIN_FILE ),
+			array(),
+			VERSION
+		);
 
 		printf(
 			'<!DOCTYPE html>

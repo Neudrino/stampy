@@ -336,6 +336,112 @@ class CampaignRecipientRepository {
 	}
 
 	/**
+	 * Get recipient rows for the admin detail view.
+	 *
+	 * Joins the subscriber email and aggregates the recorded clicks per
+	 * recipient (count + clicked URLs). Personalized per-recipient
+	 * open/click timestamps (opened_at/clicked_at) are only populated
+	 * when the campaign was sent with non-anonymous tracking.
+	 *
+	 * @param int          $campaign_id Campaign post ID.
+	 * @param array<mixed> $args        Optional. Accepts `per_page` (default 20),
+	 *                                  `page` (default 1) and `search` (email
+	 *                                  substring, default '').
+	 * @return array<int, stdClass> Rows with email, click_count and urls.
+	 */
+	public function get_recipients( int $campaign_id, array $args = array() ): array {
+		$wpdb         = $this->wpdb;
+		$table        = $this->table();
+		$subscribers  = Schema::table( 'subscribers', $wpdb );
+		$clicks_table = Schema::table( 'campaign_clicks', $wpdb );
+
+		$per_page = isset( $args['per_page'] ) ? max( 1, (int) $args['per_page'] ) : 20;
+		$page     = isset( $args['page'] ) ? max( 1, (int) $args['page'] ) : 1;
+		$search   = isset( $args['search'] ) ? trim( (string) $args['search'] ) : '';
+		$offset   = ( $page - 1 ) * $per_page;
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( '' !== $search ) {
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT r.*, s.email, COALESCE(c.click_count, 0) AS click_count, c.urls
+					FROM $table r
+					INNER JOIN $subscribers s ON r.subscriber_id = s.id
+					LEFT JOIN (
+						SELECT recipient_id, COUNT(*) AS click_count,
+							GROUP_CONCAT(url ORDER BY clicked_at ASC SEPARATOR ' | ') AS urls
+						FROM $clicks_table GROUP BY recipient_id
+					) c ON c.recipient_id = r.id
+					WHERE r.campaign_id = %d AND s.email LIKE %s
+					ORDER BY r.id ASC
+					LIMIT %d OFFSET %d",
+					$campaign_id,
+					'%' . $wpdb->esc_like( $search ) . '%',
+					$per_page,
+					$offset
+				)
+			);
+		} else {
+			$results = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT r.*, s.email, COALESCE(c.click_count, 0) AS click_count, c.urls
+					FROM $table r
+					INNER JOIN $subscribers s ON r.subscriber_id = s.id
+					LEFT JOIN (
+						SELECT recipient_id, COUNT(*) AS click_count,
+							GROUP_CONCAT(url ORDER BY clicked_at ASC SEPARATOR ' | ') AS urls
+						FROM $clicks_table GROUP BY recipient_id
+					) c ON c.recipient_id = r.id
+					WHERE r.campaign_id = %d
+					ORDER BY r.id ASC
+					LIMIT %d OFFSET %d",
+					$campaign_id,
+					$per_page,
+					$offset
+				)
+			);
+		}
+		// phpcs:enable
+
+		return null !== $results ? $results : array();
+	}
+
+	/**
+	 * Count recipient rows for the admin detail view (honors search).
+	 *
+	 * @param int    $campaign_id Campaign post ID.
+	 * @param string $search      Email substring filter.
+	 * @return int
+	 */
+	public function count_recipients( int $campaign_id, string $search = '' ): int {
+		$wpdb        = $this->wpdb;
+		$table       = $this->table();
+		$subscribers = Schema::table( 'subscribers', $wpdb );
+
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( '' !== $search ) {
+			return (int) $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT COUNT(*)
+					FROM $table r
+					INNER JOIN $subscribers s ON r.subscriber_id = s.id
+					WHERE r.campaign_id = %d AND s.email LIKE %s",
+					$campaign_id,
+					'%' . $wpdb->esc_like( $search ) . '%'
+				)
+			);
+		}
+
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM $table r WHERE r.campaign_id = %d",
+				$campaign_id
+			)
+		);
+		// phpcs:enable
+	}
+
+	/**
 	 * Mark a recipient as opened (open-tracking pixel hit).
 	 *
 	 * Idempotent: only sets opened_at on the first call (if NULL).
@@ -409,6 +515,11 @@ class CampaignRecipientRepository {
 	/**
 	 * Get tracking stats for a campaign.
 	 *
+	 * Merges personalized tracking data (this table + `campaign_clicks`)
+	 * with anonymous tracking data (`campaign_tracking_events`), so the
+	 * counts stay correct even if the anonymous setting was switched
+	 * between sends.
+	 *
 	 * @param int $campaign_id Campaign post ID.
 	 * @return array{opens: int, clicks: int, total_clicks: int}
 	 */
@@ -416,6 +527,7 @@ class CampaignRecipientRepository {
 		$wpdb         = $this->wpdb;
 		$table        = $this->table();
 		$clicks_table = Schema::table( 'campaign_clicks', $wpdb );
+		$events       = new CampaignTrackingEventRepository( $this->wpdb );
 
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		$opens = (int) $wpdb->get_var(
@@ -443,14 +555,16 @@ class CampaignRecipientRepository {
 		// phpcs:enable
 
 		return array(
-			'opens'        => $opens,
-			'clicks'       => $clicks,
-			'total_clicks' => $total_clicks,
+			'opens'        => $opens + $events->count_opens( $campaign_id ),
+			'clicks'       => $clicks + $events->count_unique_clickers( $campaign_id ),
+			'total_clicks' => $total_clicks + $events->count_clicks( $campaign_id ),
 		);
 	}
 
 	/**
 	 * Get per-URL click counts for a campaign.
+	 *
+	 * Merges personalized click rows with anonymous click events.
 	 *
 	 * @param int $campaign_id Campaign post ID.
 	 * @return array<int, stdClass> Rows with `url` and `cnt`.
@@ -474,6 +588,26 @@ class CampaignRecipientRepository {
 		);
 		// phpcs:enable
 
-		return null !== $results ? $results : array();
+		$merged = array();
+		foreach ( null !== $results ? $results : array() as $row ) {
+			$merged[ (string) $row->url ] = (int) $row->cnt;
+		}
+
+		foreach ( ( new CampaignTrackingEventRepository( $this->wpdb ) )->click_summary( $campaign_id ) as $row ) {
+			$url            = (string) $row->url;
+			$merged[ $url ] = ( $merged[ $url ] ?? 0 ) + (int) $row->cnt;
+		}
+
+		arsort( $merged );
+
+		$summary = array();
+		foreach ( $merged as $url => $cnt ) {
+			$row       = new stdClass();
+			$row->url  = $url;
+			$row->cnt  = $cnt;
+			$summary[] = $row;
+		}
+
+		return $summary;
 	}
 }

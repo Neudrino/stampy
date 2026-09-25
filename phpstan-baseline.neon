@@ -9,7 +9,7 @@ parameters:
 		-
 			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
 			identifier: argument.type
-			count: 16
+			count: 20
 			path: includes/Repositories/CampaignRecipientRepository.php
 
 		-
@@ -17,6 +17,18 @@ parameters:
 			identifier: argument.type
 			count: 5
 			path: includes/Repositories/CampaignRecipientRepository.php
+
+		-
+			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'
+			identifier: argument.type
+			count: 5
+			path: includes/Repositories/CampaignTrackingEventRepository.php
+
+		-
+			message: '#^Parameter \#1 \$query of method wpdb\:\:query\(\) expects string, string\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: includes/Repositories/CampaignTrackingEventRepository.php
 
 		-
 			message: '#^Parameter \#1 \$query of method wpdb\:\:prepare\(\) expects literal\-string, non\-falsy\-string given\.$#'

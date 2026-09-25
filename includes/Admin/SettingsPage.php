@@ -134,6 +134,16 @@ final class SettingsPage {
 						<p class="description"><?php esc_html_e( 'When enabled, a tracking pixel and click-redirect links are added to campaign emails. Individual campaigns can override this setting. Disabled by default for privacy.', 'stampy' ); ?></p>
 					</td>
 				</tr>
+				<tr>
+					<th scope="row"><?php esc_html_e( 'Anonymous Tracking', 'stampy' ); ?></th>
+					<td>
+						<label>
+							<input type="checkbox" name="tracking_anonymous" id="tracking_anonymous" value="1" <?php checked( TrackingSettings::is_anonymous() ); ?> />
+							<?php esc_html_e( 'Do not record who opened or clicked', 'stampy' ); ?>
+						</label>
+						<p class="description"><?php esc_html_e( 'When enabled (default), tracking records only how many recipients opened the email and how many clicked a link — individual recipients are never identified. Disable to record per-recipient opens and clicks. This setting only applies while tracking is enabled; if tracking is off, nothing is tracked regardless.', 'stampy' ); ?></p>
+					</td>
+				</tr>
 			</table>
 
 			<h2><?php esc_html_e( 'Anti-Spam Quiz', 'stampy' ); ?></h2>
@@ -267,6 +277,12 @@ final class SettingsPage {
 		// phpcs:enable
 
 		TrackingSettings::set_globally_enabled( $tracking_enabled );
+
+		// phpcs:disable WordPress.Security.NonceVerification.Missing
+		$tracking_anonymous = isset( $_POST['tracking_anonymous'] );
+		// phpcs:enable
+
+		TrackingSettings::set_anonymous( $tracking_anonymous );
 
 		// phpcs:disable WordPress.Security.NonceVerification.Missing
 		$physical_address = isset( $_POST['physical_address'] ) ? sanitize_textarea_field( wp_unslash( $_POST['physical_address'] ) ) : '';

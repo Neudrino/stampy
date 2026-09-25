@@ -275,6 +275,19 @@ final class CampaignSendPage {
 			esc_html__( 'Copy', 'stampy' )
 		);
 
+		if ( 'draft' !== $status ) {
+			$recipients_url = admin_url(
+				'admin.php?page=' . CampaignRecipientsPage::SLUG . '&campaign=' . $post->ID
+			);
+
+			$actions['stampy_recipients'] = sprintf(
+				'<a href="%s" aria-label="%s">%s</a>',
+				esc_url( $recipients_url ),
+				esc_attr( sprintf( /* translators: %s: campaign title */ __( 'View recipients of &#8220;%s&#8221;', 'stampy' ), $post->post_title ) ),
+				esc_html__( 'Recipients', 'stampy' )
+			);
+		}
+
 		return $actions;
 	}
 }
