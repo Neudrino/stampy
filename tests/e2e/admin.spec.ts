@@ -49,7 +49,7 @@ function deleteSubscriber( email: string ): void {
 }
 
 async function adminLogin(
-	page: import('@playwright/test').Page
+	page: import( '@playwright/test' ).Page
 ): Promise< void > {
 	// Storage state from globalSetup should already have us logged in.
 	// Navigate to an admin page to verify; if redirected to login, log in.

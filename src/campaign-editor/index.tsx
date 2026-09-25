@@ -59,32 +59,28 @@ function CampaignSidebar() {
 		( select ) =>
 			(
 				select( 'core/editor' )?.getEditedPostAttribute( 'meta' ) as
-					| Record< string, string >
-					| undefined
+					Record< string, string > | undefined
 			 )?.stampy_campaign_subject || ''
 	);
 	const listIdsRaw = useSelect(
 		( select ) =>
 			(
 				select( 'core/editor' )?.getEditedPostAttribute( 'meta' ) as
-					| Record< string, string >
-					| undefined
+					Record< string, string > | undefined
 			 )?.stampy_campaign_list_ids || '[]'
 	);
 	const status = useSelect(
 		( select ) =>
 			(
 				select( 'core/editor' )?.getEditedPostAttribute( 'meta' ) as
-					| Record< string, string >
-					| undefined
+					Record< string, string > | undefined
 			 )?.stampy_campaign_status || 'draft'
 	);
 	const trackingOverride = useSelect(
 		( select ) =>
 			(
 				select( 'core/editor' )?.getEditedPostAttribute( 'meta' ) as
-					| Record< string, string >
-					| undefined
+					Record< string, string > | undefined
 			 )?.stampy_campaign_tracking || ''
 	);
 
@@ -268,7 +264,7 @@ function CampaignSidebar() {
 					( ( displayProgress.sent + displayProgress.failed ) /
 						displayProgress.total ) *
 						100
-			  )
+				)
 			: 0;
 
 	const remaining = displayProgress.queued + displayProgress.sending;
