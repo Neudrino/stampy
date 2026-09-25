@@ -16,6 +16,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use Stampy\Campaigns\CampaignPostType;
+
 /**
  * Registers the Stampy admin menu and pages.
  */
@@ -118,6 +120,15 @@ final class AdminMenu {
 			'manage_options',
 			'stampy-import-export',
 			array( ImportExportPage::class, 'render' )
+		);
+
+		add_submenu_page(
+			'edit.php?post_type=' . CampaignPostType::POST_TYPE,
+			__( 'Recipients', 'stampy' ),
+			__( 'Recipients', 'stampy' ),
+			'manage_options',
+			CampaignRecipientsPage::SLUG,
+			array( CampaignRecipientsPage::class, 'render' )
 		);
 
 		add_action( 'admin_enqueue_scripts', array( ImportExportPage::class, 'enqueue_assets' ) );

@@ -48,7 +48,11 @@ No. Stampy connects directly to your own SMTP server. No Mailchimp, SendGrid, or
 
 = Is tracking enabled by default? =
 
-No. Open and click tracking is disabled by default for privacy. You can enable it globally in Settings, and override per campaign.
+No. Open and click tracking is off by default. Nothing is tracked until you explicitly enable it globally in **Stampy → Settings** (individual campaigns can also override it).
+
+= Does tracking show individual recipients? =
+
+Only if you turn anonymous tracking off. While tracking is enabled, the default "Anonymous Tracking" setting records how many recipients opened a campaign email and how many clicked a link (including per-URL click counts), but never who: emails carry a keyed, non-reversible pseudonym instead of a recipient ID, and no per-recipient timestamps are stored. Disable anonymous tracking in **Stampy → Settings** to record per-recipient opens and clicks — after sending, use the **Recipients** row action on the campaign to see exactly who opened or clicked, including the clicked URLs. Both settings only apply while tracking is enabled — with tracking off, nothing is tracked regardless.
 
 = What spam protection is available? =
 
@@ -122,7 +126,7 @@ When enabled, the Friendly Captcha widget script is bundled and served locally f
 * Campaign duplication (copy as new draft).
 * SMTP connector with TLS/SSL, authentication, test-send, and libsodium-encrypted passwords.
 * Batched background sending via Action Scheduler with merge-tag personalization and RFC 8058 one-click unsubscribe.
-* Open/click tracking with HMAC-signed endpoints, per-campaign override, disabled by default.
+* Open/click tracking with HMAC-signed endpoints and per-campaign override, off by default. When enabled, tracking is anonymous by default (counts without identifying recipients).
 * Import/Export with CSV/JSON, live preview, delimiter auto-detection, and merge-policy upsert.
 * Submission log (consent audit trail) with searchable admin viewer.
 * GDPR personal-data export and erase (including submission log entries).

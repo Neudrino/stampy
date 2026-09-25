@@ -29,9 +29,32 @@ final class TrackingSettings {
 	public const OPTION_KEY = 'stampy_tracking_enabled';
 
 	/**
+	 * Option key for the anonymous-tracking toggle.
+	 *
+	 * Only effective while tracking is enabled. Default: anonymous
+	 * tracking ON ('1').
+	 */
+	public const OPTION_ANONYMOUS = 'stampy_tracking_anonymous';
+
+	/**
 	 * Meta key for the per-campaign tracking override.
 	 */
 	public const META_OVERRIDE = 'stampy_campaign_tracking';
+
+	/**
+	 * Meta key for the tracking mode actually used when the campaign was
+	 * sent (snapshot written by the SendingEngine at send start).
+	 *
+	 * Values: 'off', 'anonymous', 'personalized', or '' (never sent).
+	 */
+	public const META_SENT_MODE = 'stampy_campaign_tracking_mode';
+
+	/**
+	 * Tracking-by-mode constants.
+	 */
+	public const MODE_OFF          = 'off';
+	public const MODE_ANONYMOUS    = 'anonymous';
+	public const MODE_PERSONALIZED = 'personalized';
 
 	/**
 	 * Get the global tracking-enabled setting.
@@ -59,6 +82,40 @@ final class TrackingSettings {
 	 */
 	public static function delete(): void {
 		delete_option( self::OPTION_KEY );
+	}
+
+	/**
+	 * Get the anonymous-tracking setting.
+	 *
+	 * When anonymous tracking is active (the default), tracking records
+	 * only aggregate counts (how many recipients opened or clicked) but
+	 * never identifies the individual recipients. Only effective while
+	 * tracking is enabled — if tracking is off, nothing is tracked
+	 * regardless of this setting.
+	 *
+	 * @return bool True if tracking is anonymous (default).
+	 */
+	public static function is_anonymous(): bool {
+		return '1' === get_option( self::OPTION_ANONYMOUS, '1' );
+	}
+
+	/**
+	 * Set the anonymous-tracking setting.
+	 *
+	 * @param bool $anonymous Whether tracking should be anonymous.
+	 * @return void
+	 */
+	public static function set_anonymous( bool $anonymous ): void {
+		update_option( self::OPTION_ANONYMOUS, $anonymous ? '1' : '0', false );
+	}
+
+	/**
+	 * Delete the anonymous-tracking setting.
+	 *
+	 * @return void
+	 */
+	public static function delete_anonymous(): void {
+		delete_option( self::OPTION_ANONYMOUS );
 	}
 
 	/**
@@ -110,5 +167,53 @@ final class TrackingSettings {
 		}
 
 		return self::is_globally_enabled();
+	}
+
+	/**
+	 * Resolve the effective tracking mode for a campaign right now.
+	 *
+	 * Resolves global toggle + per-campaign override + anonymous setting
+	 * into one of the tracking-mode constants. Use this for new sends;
+	 * for campaigns that have already been sent, the snapshot meta
+	 * (META_SENT_MODE) records the mode actually used.
+	 *
+	 * @param int $campaign_id Campaign post ID.
+	 * @return string One of MODE_OFF, MODE_ANONYMOUS, MODE_PERSONALIZED.
+	 */
+	public static function resolve_current_mode( int $campaign_id ): string {
+		if ( ! self::is_tracking_enabled( $campaign_id ) ) {
+			return self::MODE_OFF;
+		}
+
+		return self::is_anonymous() ? self::MODE_ANONYMOUS : self::MODE_PERSONALIZED;
+	}
+
+	/**
+	 * Get the tracking mode that was in effect when the campaign was sent.
+	 *
+	 * @param int $campaign_id Campaign post ID.
+	 * @return string One of MODE_OFF, MODE_ANONYMOUS, MODE_PERSONALIZED,
+	 *                or '' if the campaign was never sent.
+	 */
+	public static function get_campaign_sent_mode( int $campaign_id ): string {
+		$val = get_post_meta( $campaign_id, self::META_SENT_MODE, true );
+		if ( ! is_string( $val ) || ! in_array( $val, array( self::MODE_OFF, self::MODE_ANONYMOUS, self::MODE_PERSONALIZED ), true ) ) {
+			return '';
+		}
+		return $val;
+	}
+
+	/**
+	 * Store the tracking mode used for a send (snapshot at send start).
+	 *
+	 * @param int    $campaign_id Campaign post ID.
+	 * @param string $mode        One of MODE_OFF, MODE_ANONYMOUS, MODE_PERSONALIZED.
+	 * @return bool
+	 */
+	public static function set_campaign_sent_mode( int $campaign_id, string $mode ): bool {
+		if ( ! in_array( $mode, array( self::MODE_OFF, self::MODE_ANONYMOUS, self::MODE_PERSONALIZED ), true ) ) {
+			return false;
+		}
+		return (bool) update_post_meta( $campaign_id, self::META_SENT_MODE, $mode );
 	}
 }

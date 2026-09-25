@@ -9,14 +9,14 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-07-19T15:00:58+00:00\n"
+"POT-Creation-Date: 2026-09-25T15:13:00+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: stampy\n"
 
 #. Plugin Name of the plugin
 #: stampy.php
-#: includes/Admin/AdminMenu.php:55
+#: includes/Admin/AdminMenu.php:57
 msgid "Stampy"
 msgstr ""
 
@@ -35,46 +35,53 @@ msgstr ""
 msgid "Neudrino"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:54
+#: includes/Admin/AdminMenu.php:56
 msgid "Stampy Subscribers"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:67
-#: includes/Admin/AdminMenu.php:68
+#: includes/Admin/AdminMenu.php:69
+#: includes/Admin/AdminMenu.php:70
 #: includes/Admin/ListsListTable.php:63
 #: includes/Admin/SubscribersPage.php:91
 msgid "Subscribers"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:76
-#: includes/Admin/AdminMenu.php:77
+#: includes/Admin/AdminMenu.php:78
+#: includes/Admin/AdminMenu.php:79
 #: includes/Admin/ListsPage.php:58
 #: includes/Admin/SubmissionLogListTable.php:62
 #: includes/Admin/SubscribersListTable.php:89
 msgid "Lists"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:85
-#: includes/Admin/AdminMenu.php:86
+#: includes/Admin/AdminMenu.php:87
+#: includes/Admin/AdminMenu.php:88
 #: includes/Admin/FieldsPage.php:84
 msgid "Fields"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:98
-#: includes/Admin/AdminMenu.php:99
+#: includes/Admin/AdminMenu.php:100
+#: includes/Admin/AdminMenu.php:101
 msgid "Settings"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:107
-#: includes/Admin/AdminMenu.php:108
-#: includes/Admin/SettingsPage.php:197
+#: includes/Admin/AdminMenu.php:109
+#: includes/Admin/AdminMenu.php:110
+#: includes/Admin/SettingsPage.php:207
 #: includes/Admin/SubmissionLogPage.php:40
 msgid "Submission Log"
 msgstr ""
 
-#: includes/Admin/AdminMenu.php:116
-#: includes/Admin/AdminMenu.php:117
+#: includes/Admin/AdminMenu.php:118
+#: includes/Admin/AdminMenu.php:119
 msgid "Import / Export"
+msgstr ""
+
+#. translators: %s: campaign title
+#: includes/Admin/AdminMenu.php:127
+#: includes/Admin/AdminMenu.php:128
+#: includes/Admin/CampaignSendPage.php:287
+msgid "Recipients"
 msgstr ""
 
 #: includes/Admin/CampaignCopyPage.php:36
@@ -82,6 +89,7 @@ msgid "You do not have permission to copy campaigns."
 msgstr ""
 
 #: includes/Admin/CampaignCopyPage.php:44
+#: includes/Admin/CampaignPreviewPage.php:42
 #: includes/Admin/CampaignSendPage.php:41
 #: includes/Admin/CampaignSendPage.php:88
 #: includes/Admin/FieldsPage.php:294
@@ -89,7 +97,8 @@ msgid "Security check failed."
 msgstr ""
 
 #: includes/Admin/CampaignCopyPage.php:50
-#: includes/Admin/CampaignPreviewPage.php:46
+#: includes/Admin/CampaignPreviewPage.php:51
+#: includes/Admin/CampaignRecipientsPage.php:58
 #: includes/Admin/CampaignSendPage.php:47
 #: includes/Admin/CampaignSendPage.php:94
 #: includes/Campaigns/SendingEngine.php:170
@@ -110,8 +119,111 @@ msgstr ""
 msgid "You do not have permission to preview campaigns."
 msgstr ""
 
-#: includes/Admin/CampaignPreviewPage.php:41
+#: includes/Admin/CampaignPreviewPage.php:46
 msgid "Invalid campaign ID."
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:72
+#: includes/Admin/SubmissionLogListTable.php:59
+#: includes/Admin/SubscribersListTable.php:85
+#: includes/Admin/SubscribersPage.php:151
+#: includes/Privacy.php:167
+#: includes/Rewrites.php:277
+#: includes/SignupBlock.php:265
+msgid "Email"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:73
+#: includes/Admin/SubmissionLogListTable.php:60
+#: includes/Admin/SubscribersListTable.php:88
+#: includes/Admin/SubscribersPage.php:155
+#: includes/Campaigns/CampaignPostType.php:342
+#: includes/Privacy.php:121
+#: includes/Privacy.php:171
+msgid "Status"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:74
+msgid "Sent"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:75
+msgid "Opened"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:76
+msgid "Clicked"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:77
+msgid "Clicks"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsListTable.php:205
+#: includes/Admin/FieldsListTable.php:172
+#: includes/Admin/ListsListTable.php:194
+#: includes/Admin/SubmissionLogListTable.php:144
+#: includes/Admin/SubmissionLogListTable.php:164
+#: includes/Admin/SubscribersListTable.php:252
+#: includes/Admin/SubscribersListTable.php:263
+#: includes/Admin/SubscribersListTable.php:287
+#: includes/Admin/SubscribersListTable.php:297
+#: includes/Admin/SubscribersListTable.php:309
+#: includes/Admin/SubscribersListTable.php:313
+msgid "—"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:40
+#: includes/Admin/FieldsPage.php:45
+#: includes/Admin/ListsPage.php:31
+#: includes/Admin/SettingsPage.php:32
+#: includes/Admin/SubmissionLogPage.php:29
+#: includes/Admin/SubscribersPage.php:50
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:48
+msgid "Campaign Recipients"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:68
+msgid "Back to campaigns"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:93
+msgid "Tracking was disabled for this send, so no open or click data was recorded."
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:101
+msgid "This campaign was sent with anonymous tracking. Only aggregate counts are available — the \"Opened\"/\"Clicked\" columns stay empty on purpose and the plugin cannot tell who opened or clicked."
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:121
+msgid "Search recipients"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:123
+msgid "Search"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:146
+#: includes/Campaigns/CampaignPostType.php:171
+msgid "No campaigns found."
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:155
+#: includes/Campaigns/CampaignPostType.php:164
+msgid "Campaign"
+msgstr ""
+
+#. translators: 1: campaign title, 2: campaign status
+#: includes/Admin/CampaignRecipientsPage.php:164
+#, php-format
+msgid "%1$s (%2$s)"
+msgstr ""
+
+#: includes/Admin/CampaignRecipientsPage.php:173
+msgid "View recipients"
 msgstr ""
 
 #: includes/Admin/CampaignSendPage.php:33
@@ -173,6 +285,12 @@ msgstr ""
 msgid "Copy"
 msgstr ""
 
+#. translators: %s: campaign title
+#: includes/Admin/CampaignSendPage.php:286
+#, php-format
+msgid "View recipients of &#8220;%s&#8221;"
+msgstr ""
+
 #: includes/Admin/FieldsListTable.php:59
 #: includes/Admin/FieldsPage.php:141
 msgid "Label"
@@ -209,27 +327,6 @@ msgstr ""
 #: includes/Admin/SubscribersListTable.php:116
 #: includes/Admin/SubscribersListTable.php:233
 msgid "Delete"
-msgstr ""
-
-#: includes/Admin/FieldsListTable.php:172
-#: includes/Admin/ListsListTable.php:194
-#: includes/Admin/SubmissionLogListTable.php:144
-#: includes/Admin/SubmissionLogListTable.php:164
-#: includes/Admin/SubscribersListTable.php:252
-#: includes/Admin/SubscribersListTable.php:263
-#: includes/Admin/SubscribersListTable.php:287
-#: includes/Admin/SubscribersListTable.php:297
-#: includes/Admin/SubscribersListTable.php:309
-#: includes/Admin/SubscribersListTable.php:313
-msgid "—"
-msgstr ""
-
-#: includes/Admin/FieldsPage.php:45
-#: includes/Admin/ListsPage.php:31
-#: includes/Admin/SettingsPage.php:32
-#: includes/Admin/SubmissionLogPage.php:29
-#: includes/Admin/SubscribersPage.php:50
-msgid "You do not have permission to access this page."
 msgstr ""
 
 #: includes/Admin/FieldsPage.php:78
@@ -296,8 +393,8 @@ msgstr ""
 #: includes/Admin/FieldsPage.php:206
 #: includes/Admin/FieldsPage.php:298
 #: includes/Admin/ListsPage.php:134
-#: includes/Admin/SettingsPage.php:246
-#: includes/Admin/SettingsPage.php:319
+#: includes/Admin/SettingsPage.php:256
+#: includes/Admin/SettingsPage.php:335
 #: includes/Admin/SubscribersPage.php:295
 msgid "You do not have permission to perform this action."
 msgstr ""
@@ -429,125 +526,119 @@ msgstr ""
 msgid "When enabled, a tracking pixel and click-redirect links are added to campaign emails. Individual campaigns can override this setting. Disabled by default for privacy."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:139
-msgid "Anti-Spam Quiz"
+#: includes/Admin/SettingsPage.php:138
+msgid "Anonymous Tracking"
 msgstr ""
 
 #: includes/Admin/SettingsPage.php:142
-msgid "Quiz Questions"
+msgid "Do not record who opened or clicked"
 msgstr ""
 
 #: includes/Admin/SettingsPage.php:144
+msgid "When enabled (default), tracking records only how many recipients opened the email and how many clicked a link — individual recipients are never identified. Disable to record per-recipient opens and clicks. This setting only applies while tracking is enabled; if tracking is off, nothing is tracked regardless."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:149
+msgid "Anti-Spam Quiz"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:152
+msgid "Quiz Questions"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:154
 msgid "What is 3 + 4?||7"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:145
+#: includes/Admin/SettingsPage.php:155
 msgid "One question per line, in the format: question||answer. When configured, a random question is shown in the signup form. Leave empty to disable the quiz challenge."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:150
+#: includes/Admin/SettingsPage.php:160
 msgid "Cloudflare Turnstile"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:153
-#: includes/Admin/SettingsPage.php:166
+#: includes/Admin/SettingsPage.php:163
+#: includes/Admin/SettingsPage.php:176
 msgid "Site Key"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:157
-#: includes/Admin/SettingsPage.php:170
+#: includes/Admin/SettingsPage.php:167
+#: includes/Admin/SettingsPage.php:180
 msgid "Secret Key"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:159
-msgid "Get your keys at cloudflare.com/products/turnstile. Leave empty to disable."
+#: includes/Admin/SettingsPage.php:169
+msgid "Get your keys from your Cloudflare dashboard. Leave empty to disable."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:163
+#: includes/Admin/SettingsPage.php:173
 msgid "Friendly Captcha"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:172
-msgid "Get your keys at friendlycaptcha.com. Leave empty to disable."
-msgstr ""
-
-#: includes/Admin/SettingsPage.php:176
-msgid "Compliance"
-msgstr ""
-
-#: includes/Admin/SettingsPage.php:179
-msgid "Physical Address"
-msgstr ""
-
 #: includes/Admin/SettingsPage.php:182
-msgid "Your postal address, included in the footer of every campaign email (CAN-SPAM / GDPR requirement)."
+msgid "Get your keys from your Friendly Captcha dashboard. Leave empty to disable."
 msgstr ""
 
 #: includes/Admin/SettingsPage.php:186
-msgid "Data on Uninstall"
+msgid "Compliance"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:190
-msgid "Remove all Stampy data when the plugin is deleted"
+#: includes/Admin/SettingsPage.php:189
+msgid "Physical Address"
 msgstr ""
 
 #: includes/Admin/SettingsPage.php:192
-msgid "When enabled, deleting the plugin removes all subscribers, lists, campaigns, and settings. Deactivating the plugin preserves data regardless of this setting."
+msgid "Your postal address, included in the footer of every campaign email (CAN-SPAM / GDPR requirement)."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:196
+msgid "Data on Uninstall"
 msgstr ""
 
 #: includes/Admin/SettingsPage.php:200
+msgid "Remove all Stampy data when the plugin is deleted"
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:202
+msgid "When enabled, deleting the plugin removes all subscribers, lists, campaigns, and settings. Deactivating the plugin preserves data regardless of this setting."
+msgstr ""
+
+#: includes/Admin/SettingsPage.php:210
 msgid "Enable Submission Log"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:204
+#: includes/Admin/SettingsPage.php:214
 msgid "Log every successful signup submission (email, fields, consent text, timestamp)"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:206
+#: includes/Admin/SettingsPage.php:216
 msgid "When enabled, an audit trail of every signup submission is kept and automatically deleted when the subscriber is removed. Enabled by default."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:211
+#: includes/Admin/SettingsPage.php:221
 msgid "Save Settings"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:216
-#: includes/Admin/SettingsPage.php:228
+#: includes/Admin/SettingsPage.php:226
+#: includes/Admin/SettingsPage.php:238
 msgid "Send Test Email"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:223
+#: includes/Admin/SettingsPage.php:233
 msgid "Recipient"
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:232
+#: includes/Admin/SettingsPage.php:242
 msgid "Configure and save SMTP settings before sending a test email."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:333
+#: includes/Admin/SettingsPage.php:349
 msgid "Invalid recipient email address."
 msgstr ""
 
-#: includes/Admin/SettingsPage.php:360
+#: includes/Admin/SettingsPage.php:376
 msgid "Test email failed to send. Check your SMTP settings."
-msgstr ""
-
-#: includes/Admin/SubmissionLogListTable.php:59
-#: includes/Admin/SubscribersListTable.php:85
-#: includes/Admin/SubscribersPage.php:151
-#: includes/Privacy.php:167
-#: includes/Rewrites.php:277
-#: includes/SignupBlock.php:260
-msgid "Email"
-msgstr ""
-
-#: includes/Admin/SubmissionLogListTable.php:60
-#: includes/Admin/SubscribersListTable.php:88
-#: includes/Admin/SubscribersPage.php:155
-#: includes/Campaigns/CampaignPostType.php:341
-#: includes/Privacy.php:121
-#: includes/Privacy.php:171
-msgid "Status"
 msgstr ""
 
 #: includes/Admin/SubmissionLogListTable.php:61
@@ -616,7 +707,7 @@ msgstr ""
 
 #: includes/Admin/SubscribersListTable.php:338
 #: includes/Privacy.php:183
-#: includes/Rewrites.php:428
+#: includes/Rewrites.php:425
 msgid "Unsubscribed"
 msgstr ""
 
@@ -660,7 +751,7 @@ msgstr[1] ""
 msgid "updated"
 msgstr ""
 
-#: includes/Admin/SubscribersListTable.php:469
+#: includes/Admin/SubscribersListTable.php:473
 msgid "Subscriber deleted."
 msgstr ""
 
@@ -707,116 +798,112 @@ msgstr ""
 msgid "(currently unsubscribed)"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:162
-#: includes/Campaigns/CampaignPostType.php:172
+#: includes/Campaigns/CampaignPostType.php:163
+#: includes/Campaigns/CampaignPostType.php:173
 msgid "Campaigns"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:163
-msgid "Campaign"
-msgstr ""
-
-#: includes/Campaigns/CampaignPostType.php:164
-#: includes/Campaigns/CampaignPostType.php:167
+#: includes/Campaigns/CampaignPostType.php:165
+#: includes/Campaigns/CampaignPostType.php:168
 msgid "New Campaign"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:165
+#: includes/Campaigns/CampaignPostType.php:166
 msgid "Compose New Campaign"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:166
+#: includes/Campaigns/CampaignPostType.php:167
 msgid "Edit Campaign"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:168
+#: includes/Campaigns/CampaignPostType.php:169
 msgid "View Campaign"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:169
+#: includes/Campaigns/CampaignPostType.php:170
 msgid "Search Campaigns"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:170
-msgid "No campaigns found."
-msgstr ""
-
-#: includes/Campaigns/CampaignPostType.php:171
+#: includes/Campaigns/CampaignPostType.php:172
 msgid "No campaigns found in trash."
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:173
+#: includes/Campaigns/CampaignPostType.php:174
 msgid "Campaign Archives"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:174
+#: includes/Campaigns/CampaignPostType.php:175
 msgid "Campaign Attributes"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:175
+#: includes/Campaigns/CampaignPostType.php:176
 msgid "Insert into campaign"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:176
+#: includes/Campaigns/CampaignPostType.php:177
 msgid "Uploaded to this campaign"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:177
+#: includes/Campaigns/CampaignPostType.php:178
 msgid "Filter campaigns list"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:178
+#: includes/Campaigns/CampaignPostType.php:179
 msgid "Campaigns list navigation"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:179
+#: includes/Campaigns/CampaignPostType.php:180
 msgid "Campaigns list"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:180
+#: includes/Campaigns/CampaignPostType.php:181
 msgid "Campaign published."
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:181
+#: includes/Campaigns/CampaignPostType.php:182
 msgid "Campaign published privately."
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:182
+#: includes/Campaigns/CampaignPostType.php:183
 msgid "Campaign reverted to draft."
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:183
+#: includes/Campaigns/CampaignPostType.php:184
 msgid "Campaign scheduled."
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:184
+#: includes/Campaigns/CampaignPostType.php:185
 msgid "Campaign updated."
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:342
+#: includes/Campaigns/CampaignPostType.php:343
 msgid "Progress"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:343
+#: includes/Campaigns/CampaignPostType.php:344
 msgid "Tracking"
 msgstr ""
 
 #. translators: %d: failed count
-#: includes/Campaigns/CampaignPostType.php:410
+#: includes/Campaigns/CampaignPostType.php:411
 #, php-format
 msgid "%d failed"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:421
+#: includes/Campaigns/CampaignPostType.php:422
 msgid "Off"
 msgstr ""
 
-#: includes/Campaigns/CampaignPostType.php:423
+#: includes/Campaigns/CampaignPostType.php:425
+msgid "On (anonymous)"
+msgstr ""
+
+#: includes/Campaigns/CampaignPostType.php:427
 msgid "On"
 msgstr ""
 
 #. translators: 1: opens, 2: clicks
-#: includes/Campaigns/CampaignPostType.php:432
+#: includes/Campaigns/CampaignPostType.php:437
 #, php-format
 msgid "%1$d opens, %2$d clicks"
 msgstr ""
@@ -825,11 +912,11 @@ msgstr ""
 msgid "Unsubscribe:"
 msgstr ""
 
-#: includes/Campaigns/EmailRenderer.php:308
+#: includes/Campaigns/EmailRenderer.php:307
 msgid "You are receiving this email because you subscribed to our mailing list."
 msgstr ""
 
-#: includes/Campaigns/EmailRenderer.php:309
+#: includes/Campaigns/EmailRenderer.php:308
 msgid "Unsubscribe"
 msgstr ""
 
@@ -848,20 +935,20 @@ msgid "No confirmed subscribers found in the selected lists."
 msgstr ""
 
 #. translators: %d: number of recipients
-#: includes/Campaigns/SendingEngine.php:210
+#: includes/Campaigns/SendingEngine.php:218
 #, php-format
 msgid "Campaign sending started for %d recipients."
 msgstr ""
 
-#: includes/Campaigns/SendingEngine.php:273
+#: includes/Campaigns/SendingEngine.php:281
 msgid "(No subject)"
 msgstr ""
 
-#: includes/Campaigns/SendingEngine.php:438
+#: includes/Campaigns/SendingEngine.php:446
 msgid "Only sending campaigns can be cancelled."
 msgstr ""
 
-#: includes/Campaigns/SendingEngine.php:453
+#: includes/Campaigns/SendingEngine.php:461
 msgid "Campaign send cancelled."
 msgstr ""
 
@@ -891,7 +978,7 @@ msgid "Row %1$d: invalid email \"%2$s\" — skipped."
 msgstr ""
 
 #: includes/Installer.php:121
-#: includes/SignupBlock.php:162
+#: includes/SignupBlock.php:167
 msgid "I agree to receive marketing emails from this website. I can unsubscribe at any time."
 msgstr ""
 
@@ -994,7 +1081,7 @@ msgstr ""
 #: includes/Rest/UnsubscribeController.php:159
 #: includes/Rest/UnsubscribeController.php:214
 #: includes/Rewrites.php:216
-#: includes/Rewrites.php:397
+#: includes/Rewrites.php:394
 #: includes/SignupService.php:369
 msgid "Subscriber not found."
 msgstr ""
@@ -1011,7 +1098,7 @@ msgid "You have been unsubscribed from all lists."
 msgstr ""
 
 #: includes/Rest/PreferencesController.php:306
-#: includes/Rewrites.php:347
+#: includes/Rewrites.php:344
 msgid "Your preferences have been updated."
 msgstr ""
 
@@ -1026,7 +1113,7 @@ msgid "Invalid unsubscribe token."
 msgstr ""
 
 #: includes/Rest/UnsubscribeController.php:182
-#: includes/Rewrites.php:429
+#: includes/Rewrites.php:426
 msgid "You have been unsubscribed from this list."
 msgstr ""
 
@@ -1043,7 +1130,7 @@ msgid "Manage your preferences"
 msgstr ""
 
 #: includes/Rewrites.php:204
-#: includes/Rewrites.php:385
+#: includes/Rewrites.php:382
 msgid "Invalid Link"
 msgstr ""
 
@@ -1052,17 +1139,17 @@ msgid "The preference link is invalid or has expired."
 msgstr ""
 
 #: includes/Rewrites.php:215
-#: includes/Rewrites.php:396
+#: includes/Rewrites.php:393
 msgid "Not Found"
 msgstr ""
 
 #: includes/Rewrites.php:223
-#: includes/Rewrites.php:406
+#: includes/Rewrites.php:403
 msgid "Invalid Token"
 msgstr ""
 
 #: includes/Rewrites.php:224
-#: includes/Rewrites.php:407
+#: includes/Rewrites.php:404
 msgid "The token in this link is invalid."
 msgstr ""
 
@@ -1083,15 +1170,15 @@ msgstr ""
 msgid "Unsubscribe from all lists"
 msgstr ""
 
-#: includes/Rewrites.php:386
+#: includes/Rewrites.php:383
 msgid "The unsubscribe link is invalid or has expired."
 msgstr ""
 
-#: includes/SignupBlock.php:322
+#: includes/SignupBlock.php:327
 msgid "Website"
 msgstr ""
 
-#: includes/SignupBlock.php:333
+#: includes/SignupBlock.php:338
 msgid "Subscribe"
 msgstr ""
 
@@ -1164,12 +1251,12 @@ msgstr ""
 msgid "Too many signups from your IP. Please try again later."
 msgstr ""
 
-#: includes/SpamGuards/TurnstileGuard.php:55
+#: includes/SpamGuards/TurnstileGuard.php:61
 msgid "Please complete the Turnstile challenge."
 msgstr ""
 
-#: includes/SpamGuards/TurnstileGuard.php:70
-#: includes/SpamGuards/TurnstileGuard.php:77
+#: includes/SpamGuards/TurnstileGuard.php:76
+#: includes/SpamGuards/TurnstileGuard.php:83
 msgid "Turnstile verification failed. Please try again."
 msgstr ""
 

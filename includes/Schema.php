@@ -41,7 +41,7 @@ class Schema {
 	 * `stampy_db_version` option is compared against this value on
 	 * `plugins_loaded` to decide whether to run `Installer::install()`.
 	 */
-	public const DB_VERSION = 1;
+	public const DB_VERSION = 2;
 
 	/**
 	 * Get the list of all Stampy table names (prefixed).
@@ -62,6 +62,7 @@ class Schema {
 			'subscriber_lists',
 			'campaign_recipients',
 			'campaign_clicks',
+			'campaign_tracking_events',
 			'submission_log',
 		);
 		$full   = array();
@@ -209,6 +210,20 @@ class Schema {
 			clicked_at DATETIME NOT NULL,
 			PRIMARY KEY  (id),
 			KEY recipient_id (recipient_id)
+		) {$charset};";
+
+		// campaign_tracking_events (anonymous tracking; no subscriber linkage).
+		$sql[] = "CREATE TABLE {$tables['campaign_tracking_events']} (
+			id {$biguint},
+			campaign_id BIGINT UNSIGNED NOT NULL,
+			kind VARCHAR(20) NOT NULL,
+			subject_hash CHAR(64) NOT NULL,
+			url_hash CHAR(64) NOT NULL DEFAULT '',
+			url VARCHAR(2083) DEFAULT NULL,
+			created_at DATETIME NOT NULL,
+			PRIMARY KEY  (id),
+			UNIQUE KEY dedup (campaign_id, kind, subject_hash, url_hash),
+			KEY campaign_kind (campaign_id, kind)
 		) {$charset};";
 
 		// submission_log.

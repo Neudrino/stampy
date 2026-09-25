@@ -415,13 +415,17 @@ final class CampaignPostType {
 				}
 			}
 		} elseif ( 'stampy_tracking' === $column ) {
-			$status  = self::get_status( $post_id );
-			$enabled = TrackingSettings::is_tracking_enabled( $post_id );
+			$status = self::get_status( $post_id );
+			$mode   = self::get_tracking_display_mode( $post_id );
 
-			if ( ! $enabled ) {
+			if ( TrackingSettings::MODE_OFF === $mode ) {
 				echo '<span style="color:#50575e;">' . esc_html__( 'Off', 'stampy' ) . '</span>';
 			} else {
-				echo '<span style="color:#00a32a;">' . esc_html__( 'On', 'stampy' ) . '</span>';
+				if ( TrackingSettings::MODE_ANONYMOUS === $mode ) {
+					echo '<span style="color:#0071a1;">' . esc_html__( 'On (anonymous)', 'stampy' ) . '</span>';
+				} else {
+					echo '<span style="color:#00a32a;">' . esc_html__( 'On', 'stampy' ) . '</span>';
+				}
 
 				if ( 'sent' === $status ) {
 					$repo  = new CampaignRecipientRepository();
@@ -438,6 +442,24 @@ final class CampaignPostType {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Resolve the tracking mode to display for a campaign.
+	 *
+	 * Campaigns that have been sent show the mode that was in effect at
+	 * send time (snapshot meta); unsent campaigns show the mode they
+	 * would currently use.
+	 *
+	 * @param int $post_id Campaign post ID.
+	 * @return string One of TrackingSettings::MODE_*.
+	 */
+	public static function get_tracking_display_mode( int $post_id ): string {
+		$sent_mode = TrackingSettings::get_campaign_sent_mode( $post_id );
+
+		return '' !== $sent_mode
+			? $sent_mode
+			: TrackingSettings::resolve_current_mode( $post_id );
 	}
 
 	/**

@@ -2531,3 +2531,262 @@ Status: **COMPLETE** ✓
 
 
 
+
+## Anonymous Tracking (post-Phase 19)
+
+Status: **COMPLETE** ✓ — all tests green (296 integration, 82 unit, 22 JS).
+
+### Overview
+
+Added an "Anonymous Tracking" mode on top of the existing personalized
+tracking. In anonymous mode (the new default) the system still counts
+how many recipients opened a campaign and how many clicked a link
+(including per-URL click counts) but it never records WHO: emails carry
+an irreversible keyed pseudonym instead of the recipient ID, and no
+per-recipient `opened_at`/`clicked_at` timestamps are stored.
+
+Behavior rules:
+- The product default is **tracking OFF** (`stampy_tracking_enabled`
+  default `'0'`). Nothing is tracked until an admin explicitly enables
+  tracking — out of the box no email is instrumented. The anonymous
+  setting therefore only ever matters once tracking is enabled.
+- Only effective while tracking is enabled (global + per-campaign
+  resolution as before). If tracking is disabled, nothing is tracked
+  regardless of the anonymous setting.
+- Default: anonymous tracking ON (`stampy_tracking_anonymous` default
+  `'1'`).
+- Configurable via a checkbox in the Settings page tracking section.
+- Stats (`get_stats()` / `get_click_summary()`) now MERGE personalized
+  rows (`campaign_recipients` + `campaign_clicks`) with anonymous
+  events (`campaign_tracking_events`), so counts stay correct when the
+  mode is switched between sends.
+
+### Implementation details
+
+- **`TrackingSettings`** — new option `stampy_tracking_anonymous`
+  (default `'1'`) with `is_anonymous()` / `set_anonymous()`.
+- **`Schema`** — new table `campaign_tracking_events` (kind `open`|
+  `click`, `subject_hash` CHAR(64), `url_hash` CHAR(64), `url`,
+  `created_at`; UNIQUE (campaign_id, kind, subject_hash, url_hash)).
+  `DB_VERSION` bumped 1 → 2 so `Lifecycle::on_plugins_loaded()`
+  triggers `Installer::install()` → `dbDelta()` creates the table on
+  existing installs. `Schema::uninstall()` drops it automatically
+  (table_names list).
+- **`Tracking`** — `subject_hash(recipient, campaign)` =
+  `hash_hmac( 'sha256', 'stampy_tracking_subject|<r>|<c>', secret )`.
+  The campaign ID is part of the HMAC input so hashes cannot be
+  correlated across campaigns. `build_open_pixel_url()` /
+  `build_click_url()` branch on `TrackingSettings::is_anonymous()` and
+  use new query vars `stampy_trk_h` / `stampy_clk_h` (no recipient ID
+  in the URL at all). New verifiers
+  `verify_open_anonymous_signature()` / `verify_click_anonymous_signature()`.
+- **`TrackingEndpoints`** — new anonymous handlers (dispatch checked
+  BEFORE the personalized vars): `handle_open_anonymous()` /
+  `handle_click_anonymous()` verify the HMAC, then public
+  `process_open_anonymous()` / `process_click_anonymous()` record
+  events via the new repository and fire the existing
+  `stampy_campaign_email_opened` / `stampy_campaign_link_clicked`
+  actions with recipient_id `0` (unknown). The existing personalized
+  handlers are untouched.
+- **`CampaignTrackingEventRepository`** — new repository.
+  `record()` uses `INSERT IGNORE` + the UNIQUE key for idempotent,
+  unique-person counts: one open row per person per campaign, one click
+  row per person per URL (per-URL summary works via GROUP BY url;
+  unique clickers via COUNT(DISTINCT subject_hash)).
+- **`CampaignRecipientRepository`** — `get_stats()` and
+  `get_click_summary()` merge both data sources (sum of personalized +
+  anonymous counts).
+- **`SettingsPage`** — new "Anonymous Tracking" checkbox (default
+  checked) with a description stating it only applies while tracking
+  is enabled. Save handler persists via `TrackingSettings::set_anonymous()`.
+- **`uninstall.php`** — deletes the `stampy_tracking_anonymous` option
+  (table dropped via Schema).
+
+### Test coverage
+
+- **Unit** (`tests/phpunit/Unit/TrackingSettingsTest.php`, 8 tests):
+  tracking default off, anonymous default ON, round-trips for both
+  toggles, anonymous setting does not affect tracking-enabled
+  resolution, invalid campaign override rejected, delete restores
+  default.
+- **Integration** (`tests/phpunit/Integration/AnonymousTrackingTest.php`,
+  15 tests): anonymous is default; **fresh install (no options at all)
+  tracks nothing** (locks in the tracking-off product default);
+  disabled tracking → no tracking for both anonymous values; emails
+  contain `stampy_trk_h`/`stampy_clk_h` but no
+  `stampy_trk_r`/`stampy_clk_r`; anonymous open counts while recipient
+  rows stay empty (`opened_at`/`clicked_at` NULL); opens and clicks
+  deduplicated per person/URL; two subscribers → two opens with no
+  identity; per-URL click summary still works; per-recipient hash
+  differs across recipients (same campaign); tampered open/click
+  signatures and swapped destinations rejected; personalized mode
+  still records identity when anonymous is off; stats merge
+  personalized + anonymous events; settings save persists the option.
+- **Existing integration tests updated**: `TrackingTest` now pins
+  `set_anonymous( false )` in `setUp()` (it tests the personalized
+  flow) and restores the anonymous default in `tearDown()`.
+- **E2E** (`tests/e2e/tracking.spec.ts`): now sets
+  `stampy_tracking_anonymous = 0` (and cleans it up) so it keeps
+  exercising the personalized flow with recipient IDs in URLs.
+
+### Gotchas discovered
+
+- **Existing tracking tests broke with the new default** — any test
+  asserting the personalized URL params (`stampy_trk_r`/`stampy_clk_r`)
+  must explicitly call `TrackingSettings::set_anonymous( false )` in
+  `setUp()`; the default is now anonymous.
+- **`get_post_meta()`/`update_post_meta()` must be Brain-Monkey-stubbed **
+  when unit-testing `TrackingSettings::is_tracking_enabled()` — the
+  method reads per-campaign override meta.
+- **`INSERT IGNORE` needs the table as a plain interpolated variable**
+  — `wpdb::prepare()` + `INSERT IGNORE INTO $table ...` trigger both
+  `WordPress.DB.PreparedSQL.InterpolatedNotPrepared` and
+  `WordPress.DB.PreparedSQL.NotPrepared`; suppress BOTH sniffs in one
+  `phpcs:disable` block.
+- **Test editor hygiene** — keep comment prose free of stray
+  non-English placeholder characters; one draft accidentally contained
+  mangled characters which had to be cleaned before committing.
+- **Custom tables survive between test runs while WP core tables are
+  reset** — `campaign_recipients`/`campaign_clicks`/`campaign_tracking_events`
+  are created with `dbDelta()`, which implicitly commits the test
+  transaction. Across phpunit runs the core tables are reinstalled
+  (post IDs restart low) but the Stampy tables keep their rows, so a
+  fresh campaign post can be assigned an ID that still has stale
+  recipient rows → `get_stats()` shows phantom opens/clicks. Fix: purge
+  the tracking tables in `tearDown()` **after** `parent::tearDown()`
+  (see `AnonymousTrackingTest`). Without the purge the failure only
+  appears after a previous run left data behind, making it look flaky.
+
+## Fix — early style registration (dev instance notice)
+
+Status: **FIXED** ✓ (included in the Anonymous Tracking work).
+
+### Problem
+
+The dev instance (`:8888`) printed on every request:
+
+```
+Notice: Function wp_register_style was called incorrectly. Scripts and styles
+should not be registered or enqueued until the wp_enqueue_scripts,
+admin_enqueue_scripts, or login_enqueue_scripts hooks. This notice was
+triggered by the stampy-frontend-page handle.
+Warning: Cannot modify header information - headers already sent ...
+```
+
+The tests instance (`:8889`) was unaffected because it does not display
+the notice (`WP_DEBUG_DISPLAY` off / different run path).
+
+### Root cause
+
+`Rewrites::register()` is called from `bootstrap()` (plugin load, before
+`init`) and called `wp_register_style()` there. WordPress's
+`_wp_scripts_maybe_doing_it_wrong()` permits script/style registration
+only after `init` (or one of the enqueue hooks). The notice HTML broke
+the response headers.
+
+### Fix
+
+Removed the early `wp_register_style()` from `Rewrites::register()`. The
+`stampy-frontend-page` stylesheet is now registered+enqueued inside
+`render_html_page()` (`Rewrites.php`), which runs on `template_redirect`
+— i.e. after `init` — and only when a Stampy virtual page is actually
+rendered. No other class registers scripts/styles at bootstrap
+(`SignupBlock::register()` is already hooked to `init`).
+
+### Verification
+
+- `curl http://localhost:8888/` and `/wp-login.php`: 0 occurrences of
+  "called incorrectly" / "headers already sent".
+- `validate:fast` green; `test:integration:php` green (296 tests — the
+  virtual-page integration tests cover `Rewrites::render_html_page()`).
+
+## Fix — schema upgrade check skipped new table
+
+Status: **FIXED** ✓
+
+### Problem
+
+`Stampy → Campaigns` showed `0 opens, 0 clicks` plus WordPress DB
+errors: `Table 'wordpress.wp_stampy_campaign_tracking_events' doesn't
+exist`.
+
+### Root cause
+
+The dev database stored `stampy_db_version = 4` (left over from the
+pre-Phase-19 schema). `Lifecycle::on_plugins_loaded()` only ran the
+installer when `$stored < $code`; after the version was reset to 1 and
+then bumped to 2, `4 < 2` is false, so `Installer::install()` never ran
+and the new `campaign_tracking_events` table was never created. Stats
+queries then failed and returned 0.
+
+### Fix
+
+`Lifecycle::on_plugins_loaded()` now runs `Installer::install()` on any
+mismatch (`$stored !== $code`). `Schema::install()` is idempotent
+(`dbDelta()` + `CREATE TABLE IF NOT EXISTS`), so this also self-heals
+downgrades/version resets. Verified on the dev instance: the next
+request created the table and set `stampy_db_version = 2`.
+
+## Campaign tracking: send-time snapshot + recipients detail view
+
+Status: **COMPLETE** ✓ — all tests green (305 integration, 82 unit, 22 JS).
+
+### 1. Per-campaign send-time tracking mode
+
+Previously the campaigns overview "Tracking" column resolved the
+*current* global/per-campaign setting at render time, so toggling the
+global switch changed the column for already-sent campaigns. Now the
+effective mode is snapshotted at send start and displayed per campaign.
+
+- **`TrackingSettings`** — new constants `MODE_OFF`/`MODE_ANONYMOUS`/
+  `MODE_PERSONALIZED`, meta key `META_SENT_MODE`
+  (`stampy_campaign_tracking_mode`), and methods
+  `resolve_current_mode()` / `get_campaign_sent_mode()` /
+  `set_campaign_sent_mode()`.
+- **`SendingEngine::start_send()`** — writes the resolved mode to the
+  snapshot meta alongside the HTML/text/subject snapshots.
+- **`CampaignPostType::get_tracking_display_mode()`** — returns the
+  snapshot for sent campaigns, the current resolution for drafts.
+  Column shows `Off`, `On (anonymous)`, or `On` (+ stats when sent).
+- **`test_render`** — `tests/phpunit/Integration/CampaignRecipientsTest`
+  covers resolution, snapshotting, and that the display mode sticks
+  after the global setting changes.
+
+### 2. Recipients detail view (who opened/clicked)
+
+- **`CampaignRecipientRepository::get_recipients()` /
+  `count_recipients()`** — join subscriber email, paginate/search by
+  email, and aggregate clicks per recipient (`click_count` +
+  `GROUP_CONCAT(url)`).
+- **`Admin/CampaignRecipientsListTable.php`** (own file per
+  `OneObjectStructurePerFile`) — columns Email, Status, Sent, Opened,
+  Clicked, Clicks (+ clicked URLs).
+- **`Admin/CampaignRecipientsPage.php`** — read-only page
+  (`manage_options`) under Campaigns → **Recipients**
+  (`admin.php?page=stampy-campaign-recipients&campaign=ID`). Shows a
+  mode notice: tracking off / anonymous (identity intentionally not
+  recorded) / personalized (per-recipient data). Without a `campaign`
+  param it renders a campaign chooser.
+- **`CampaignSendPage::add_row_action()`** — adds a **Recipients**
+  row action for non-draft campaigns.
+- **`AdminMenu`** — registers the submenu under
+  `edit.php?post_type=stampy_campaign`.
+
+With anonymous tracking the view is still listed (who received it) but
+Opened/Clicked stay empty by design — only aggregate counts exist.
+
+### Tests
+
+- **`CampaignRecipientsTest`** (9 integration tests): mode resolution,
+  send snapshot for all three modes, display mode uses snapshot after
+  global change, recipient listing with email + aggregated click URL,
+  email search/count, anonymous recipients have no identity while
+  aggregate counts remain, recipients row action (draft vs sent), and
+  the admin page renders the recipient email.
+
+### Gotcha
+
+- The custom-table persistence between test runs (see AGENTS.md) also
+  applies here: `CampaignRecipientsTest::tearDown()` purges
+  `campaign_recipients`/`campaign_clicks`/`campaign_tracking_events`
+  after `parent::tearDown()`.
