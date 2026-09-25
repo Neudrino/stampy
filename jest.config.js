@@ -16,9 +16,10 @@ module.exports = {
 		...moduleMocks,
 	},
 	transform: {
-		'\\.[jt]sx?$': require.resolve(
-			'@wordpress/scripts/config/babel-transform'
-		),
+		'\\.[jt]sx?$': [
+			'babel-jest',
+			{ presets: [ '@wordpress/babel-preset-default' ] },
+		],
 	},
 	setupFilesAfterEnv: [
 		...wpPreset.setupFilesAfterEnv,

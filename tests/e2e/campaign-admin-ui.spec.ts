@@ -39,7 +39,7 @@ function wpCli( command: string ): string {
 }
 
 async function adminLogin(
-	page: import('@playwright/test').Page
+	page: import( '@playwright/test' ).Page
 ): Promise< void > {
 	await page.goto( `${ TESTS_URL }/wp-admin/` );
 	if ( page.url().includes( 'wp-login.php' ) ) {

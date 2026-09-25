@@ -8,7 +8,7 @@ import { execSync } from 'child_process';
 const TESTS_URL = 'http://localhost:8889';
 
 async function adminLogin(
-	page: import('@playwright/test').Page
+	page: import( '@playwright/test' ).Page
 ): Promise< void > {
 	await page.goto( `${ TESTS_URL }/wp-admin/` );
 	if ( page.url().includes( 'wp-login.php' ) ) {

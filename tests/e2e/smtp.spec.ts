@@ -21,7 +21,7 @@ const MAILPIT_DEV_API = 'http://localhost:8025/api/v1';
 const MAILPIT_TESTS_API = 'http://localhost:8026/api/v1';
 
 async function adminLogin(
-	page: import('@playwright/test').Page
+	page: import( '@playwright/test' ).Page
 ): Promise< void > {
 	await page.goto( `${ TESTS_URL }/wp-admin/` );
 	if ( page.url().includes( 'wp-login.php' ) ) {
