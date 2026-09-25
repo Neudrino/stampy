@@ -156,7 +156,7 @@ final class SettingsPage {
 			<tr>
 				<th scope="row"><label for="turnstile_secret_key"><?php esc_html_e( 'Secret Key', 'stampy' ); ?></label></th>
 				<td><input type="password" name="turnstile_secret_key" id="turnstile_secret_key" class="regular-text" value="<?php echo esc_attr( get_option( 'stampy_turnstile_secret_key', '' ) ); ?>" placeholder="0x4AAAAAAA..." autocomplete="new-password" />
-				<p class="description"><?php esc_html_e( 'Get your keys at cloudflare.com/products/turnstile. Leave empty to disable.', 'stampy' ); ?></p></td>
+				<p class="description"><?php esc_html_e( 'Get your keys from your Cloudflare dashboard. Leave empty to disable.', 'stampy' ); ?></p></td>
 			</tr>
 		</table>
 
@@ -169,7 +169,7 @@ final class SettingsPage {
 			<tr>
 				<th scope="row"><label for="friendly_captcha_secret_key"><?php esc_html_e( 'Secret Key', 'stampy' ); ?></label></th>
 				<td><input type="password" name="friendly_captcha_secret_key" id="friendly_captcha_secret_key" class="regular-text" value="<?php echo esc_attr( get_option( 'stampy_friendly_captcha_secret_key', '' ) ); ?>" placeholder="..." autocomplete="new-password" />
-				<p class="description"><?php esc_html_e( 'Get your keys at friendlycaptcha.com. Leave empty to disable.', 'stampy' ); ?></p></td>
+				<p class="description"><?php esc_html_e( 'Get your keys from your Friendly Captcha dashboard. Leave empty to disable.', 'stampy' ); ?></p></td>
 			</tr>
 		</table>
 

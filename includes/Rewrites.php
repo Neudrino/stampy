@@ -333,9 +333,6 @@ final class Rewrites {
 		}
 
 		$raw_lists = isset( $_POST['lists'] ) ? (array) wp_unslash( $_POST['lists'] ) : array();
-		if ( ! is_array( $raw_lists ) ) {
-			$raw_lists = array();
-		}
 		$requested = array_map( 'intval', $raw_lists );
 
 		$all_lists = $list_repo->all();

@@ -90,8 +90,9 @@ class ConsentTextRepository {
 		$wpdb  = $this->wpdb;
 		$table = $this->table();
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results( "SELECT * FROM $table ORDER BY version DESC" );
+		$rows = $wpdb->get_results( "SELECT * FROM $table ORDER BY version DESC" );
 		// phpcs:enable
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**

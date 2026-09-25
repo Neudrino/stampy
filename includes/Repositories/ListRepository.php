@@ -99,8 +99,9 @@ class ListRepository {
 		$wpdb  = $this->wpdb;
 		$table = $this->lists_table();
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results( "SELECT * FROM $table ORDER BY name ASC" );
+		$rows = $wpdb->get_results( "SELECT * FROM $table ORDER BY name ASC" );
 		// phpcs:enable
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**
@@ -298,13 +299,14 @@ class ListRepository {
 		$lists    = $this->lists_table();
 		$junction = $this->junction_table();
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results(
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT l.*, sl.status, sl.subscribed_at, sl.unsubscribed_at FROM $lists l INNER JOIN $junction sl ON l.id = sl.list_id WHERE sl.subscriber_id = %d ORDER BY l.name ASC",
 				$subscriber_id
 			)
 		);
 		// phpcs:enable
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**
@@ -319,7 +321,7 @@ class ListRepository {
 		$junction    = $this->junction_table();
 		$subscribers = Schema::table( 'subscribers', $wpdb );
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		return $wpdb->get_results(
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT s.* FROM $subscribers s INNER JOIN $junction sl ON s.id = sl.subscriber_id WHERE sl.list_id = %d AND sl.status = %s ORDER BY s.email ASC",
 				$list_id,
@@ -327,5 +329,6 @@ class ListRepository {
 			)
 		);
 		// phpcs:enable
+		return is_array( $rows ) ? $rows : array();
 	}
 }

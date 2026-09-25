@@ -42,9 +42,12 @@ final class SignupBlock {
 		wp_set_script_translations( 'stampy-signup-editor-script', 'stampy', plugin_dir_path( PLUGIN_FILE ) . 'languages' );
 		wp_set_script_translations( 'stampy-signup-view-script', 'stampy', plugin_dir_path( PLUGIN_FILE ) . 'languages' );
 
+		// phpcs:disable WordPress.NamingConventions.PrefixAllGlobals.NewPrefixedVariableName
+		$captcha_src = plugins_url( 'assets/captcha-loader.js', PLUGIN_FILE );
+		// phpcs:enable
 		wp_register_script(
 			'stampy-captcha-loader',
-			plugins_url( 'assets/captcha-loader.js', PLUGIN_FILE ),
+			'' !== $captcha_src ? $captcha_src : false,
 			array(),
 			VERSION,
 			true

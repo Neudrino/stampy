@@ -92,10 +92,12 @@ class FieldRepository {
 		$table = $this->table();
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 		if ( $admin_only ) {
-			return $wpdb->get_results( "SELECT * FROM $table WHERE show_in_admin = 1 ORDER BY id ASC" );
+			$rows = $wpdb->get_results( "SELECT * FROM $table WHERE show_in_admin = 1 ORDER BY id ASC" );
+		} else {
+			$rows = $wpdb->get_results( "SELECT * FROM $table ORDER BY id ASC" );
 		}
-		return $wpdb->get_results( "SELECT * FROM $table ORDER BY id ASC" );
 		// phpcs:enable
+		return is_array( $rows ) ? $rows : array();
 	}
 
 	/**
