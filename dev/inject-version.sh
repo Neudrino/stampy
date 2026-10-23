@@ -13,7 +13,10 @@
 #
 # Files updated:
 #   stampy.php                          — Version: header + const VERSION
-#   readme.txt                          — Stable tag + changelog section
+#   readme.txt                          — Stable tag
+#
+# The readme.txt changelog is NOT handled here — it is generated from the
+# Conventional Commits at build time by dev/generate-changelog.sh.
 #   package.json                        — "version" field
 #   src/blocks/signup/block.json        — "version" field
 #   src/campaign-editor/block.json      — "version" field
@@ -48,9 +51,6 @@ sed -i "s/^\( \* Plugin version\.\).*/\1 Set to ${VERSION} during build./" stamp
 
 # readme.txt — Stable tag.
 sed -i "s/^Stable tag: .*/Stable tag: ${VERSION}/" readme.txt
-
-# readme.txt — changelog: rename "= unreleased =" to the actual version.
-sed -i "s/^= unreleased =/= ${VERSION} =/" readme.txt
 
 # package.json — "version" field.
 sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"${VERSION}\"/" package.json
