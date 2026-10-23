@@ -29,6 +29,7 @@ Stampy is a self-hosted mailing-list plugin for WordPress. No external email ser
 * **GDPR compliance** — personal data exporters and erasers for subscriber profiles, attributes, list memberships, pending signups, campaign recipient history, click tracking data, and submission log entries. Physical address field for CAN-SPAM compliance.
 * **Preference center** — subscribers can manage their list memberships and unsubscribe from a self-hosted preference page.
 * **Uninstall cleanup** — all data (tables, options, cron events, campaigns) is removed on plugin deletion (toggle in settings).
+* **Translation-ready** — ships with a .pot template; community translations available via translate.wordpress.org once the plugin is hosted on WordPress.org.
 
 == Installation ==
 
@@ -112,23 +113,3 @@ When enabled, the Friendly Captcha widget script is bundled and served locally f
 5. Settings — SMTP configuration, tracking toggle, compliance, anti-spam, and captcha settings
 6. Submission Log — consent audit trail with searchable log entries
 7. Import/Export — CSV/JSON import and export of subscriber data
-
-== Changelog ==
-
-= unreleased =
-
-* Double opt-in signup block with configurable custom fields, consent checkbox, and list selection.
-* Spam protection via honeypot, rate limiting, optional quiz challenge, Cloudflare Turnstile, and Friendly Captcha.
-* Custom field management (text, textarea, number, date, select, checkbox) with admin CRUD UI.
-* Subscriber management with search, status and list filtering, bulk actions, full profile editor.
-* List management with subscriber counts and CRUD.
-* Block-editor campaign composer with sidebar plugin (subject, lists, tracking, send/cancel, progress, preview).
-* Campaign duplication (copy as new draft).
-* SMTP connector with TLS/SSL, authentication, test-send, and libsodium-encrypted passwords.
-* Batched background sending via Action Scheduler with merge-tag personalization and RFC 8058 one-click unsubscribe.
-* Open/click tracking with HMAC-signed endpoints and per-campaign override, off by default. When enabled, tracking is anonymous by default (counts without identifying recipients).
-* Import/Export with CSV/JSON, live preview, delimiter auto-detection, and merge-policy upsert.
-* Submission log (consent audit trail) with searchable admin viewer.
-* GDPR personal-data export and erase (including submission log entries).
-* Preference center and one-click unsubscribe (RFC 8058).
-* Translation-ready with .pot template.
