@@ -57,3 +57,4 @@ jobs:
           SVN_PASSWORD: ${{ secrets.SVN_PASSWORD }}
           SLUG: stampy
           ASSETS_DIR: .wordpress-org
+          VERSION: ${{ inputs.tag }}
