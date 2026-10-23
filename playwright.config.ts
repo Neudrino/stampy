@@ -29,4 +29,18 @@ export default defineConfig( {
 		video: 'off',
 		storageState: 'tests/e2e/.auth/admin.json',
 	},
+	projects: [
+		{
+			name: 'e2e',
+			testIgnore: [ /smtp\.spec\.ts$/, /campaign-send\.spec\.ts$/ ],
+			use: { browserName: 'chromium' },
+		},
+		{
+			name: 'smtp-serial',
+			testMatch: [ /smtp\.spec\.ts$/, /campaign-send\.spec\.ts$/ ],
+			fullyParallel: false,
+			workers: 1,
+			use: { browserName: 'chromium' },
+		},
+	],
 } );

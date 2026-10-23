@@ -11,7 +11,8 @@
 import { test, expect, request } from '@playwright/test';
 
 const TESTS_URL = 'http://localhost:8889';
-const MAILPIT_API = 'http://localhost:8026/api/v1';
+const MAILPIT_TESTS_API = 'http://localhost:8026/api/v1';
+const MAILPIT_DEV_API = 'http://localhost:8025/api/v1';
 
 function randomEmail(): string {
 	const rand = Math.random().toString( 36 ).slice( 2, 10 );
@@ -28,49 +29,47 @@ function getListId(): number {
 	return id;
 }
 
-async function clearMailpit(): Promise< void > {
-	const ctx = await request.newContext();
-	await ctx.delete( `${ MAILPIT_API }/messages` );
-	await ctx.dispose();
-}
-
 async function waitForEmail(
 	toAddress: string,
 	timeout = 10_000
 ): Promise< { subject: string; body: string } > {
 	const startTime = Date.now();
+	const apis = [ MAILPIT_TESTS_API, MAILPIT_DEV_API ];
 
 	while ( Date.now() - startTime < timeout ) {
-		const ctx = await request.newContext();
-		const response = await ctx.get(
-			`${ MAILPIT_API }/search?query=${ encodeURIComponent(
-				'to:' + toAddress
-			) }`
-		);
-		const body = await response.json();
-
-		if ( body.messages && body.messages.length > 0 ) {
-			const messageId = body.messages[ 0 ].ID;
-
-			const msgResponse = await ctx.get(
-				`${ MAILPIT_API }/message/${ messageId }`
+		for ( const api of apis ) {
+			const ctx = await request.newContext();
+			const response = await ctx.get(
+				`${ api }/search?query=${ encodeURIComponent(
+					'to:' + toAddress
+				) }`
 			);
-			const msgBody = await msgResponse.json();
+			const body = await response.json();
+
+			if ( body.messages && body.messages.length > 0 ) {
+				const messageId = body.messages[ 0 ].ID;
+
+				const msgResponse = await ctx.get(
+					`${ api }/message/${ messageId }`
+				);
+				const msgBody = await msgResponse.json();
+
+				await ctx.dispose();
+
+				return {
+					subject: msgBody.Subject || msgBody.subject || '',
+					body:
+						msgBody.Text ||
+						msgBody.text ||
+						msgBody.HTML ||
+						msgBody.html ||
+						'',
+				};
+			}
 
 			await ctx.dispose();
-
-			return {
-				subject: msgBody.Subject || msgBody.subject || '',
-				body:
-					msgBody.Text ||
-					msgBody.text ||
-					msgBody.HTML ||
-					msgBody.html ||
-					'',
-			};
 		}
 
-		await ctx.dispose();
 		await new Promise( ( resolve ) => setTimeout( resolve, 500 ) );
 	}
 
@@ -91,8 +90,6 @@ function extractConfirmUrl( emailBody: string ): string {
 
 test.describe( 'Signup → Confirm flow', () => {
 	test( 'full double opt-in signup journey', async () => {
-		await clearMailpit();
-
 		const listId = getListId();
 		const email = randomEmail();
 

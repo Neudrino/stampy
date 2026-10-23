@@ -5,7 +5,7 @@
 # Usage: ./dev/inject-version.sh <version>
 # Example: ./dev/inject-version.sh 1.0.0
 #
-# This script is called by the build-release.yml and deploy-wporg.yml
+# This script is called by the stampy-release.yml and stampy-wp-deployment.yml
 # GitHub Actions workflows to inject the version from the git tag into
 # all source files before building. The repository source always
 # carries a placeholder ("0.0.1" or "unreleased"); the real version

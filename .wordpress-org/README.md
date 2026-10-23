@@ -3,7 +3,8 @@
 This directory contains images used on the WordPress.org plugin directory page.
 These files are deployed to the SVN `assets/` directory by the
 `10up/action-wordpress-plugin-deploy` GitHub Action during the deploy workflow
-(`deploy-wporg.yml`). They are excluded from the plugin zip via `.distignore`.
+(`stampy-wp-deployment.yml`). They are excluded from the plugin zip via
+`.distignore`.
 
 ## Files
 

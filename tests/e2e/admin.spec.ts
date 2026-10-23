@@ -164,15 +164,13 @@ test.describe( 'Admin subscribers/lists management', () => {
 			);
 			expect( signupRes.ok() ).toBeTruthy();
 
-			// Go to subscribers page.
+			// Go directly to the subscribers page filtered by our
+			// subscriber. A form-submit navigation to this page leaves
+			// the headless browser's hit-testing dead (clicks hit
+			// nothing), while a goto-loaded document is fully clickable.
 			await page.goto(
-				`${ TESTS_URL }/wp-admin/admin.php?page=stampy-subscribers`
+				`${ TESTS_URL }/wp-admin/admin.php?page=stampy-subscribers&s=${ encodeURIComponent( bulkEmail ) }`
 			);
-
-			// Search for our subscriber.
-			await page.fill( '#subscriber-search-input', bulkEmail );
-			await page.click( '#search-submit', { force: true } );
-			await page.waitForLoadState( 'networkidle' );
 
 			// Check the checkbox for the first (and only) row.
 			// page.check() can silently fail on WP admin checkboxes — use evaluate + click.
@@ -198,9 +196,10 @@ test.describe( 'Admin subscribers/lists management', () => {
 
 			// Apply the bulk action.
 			await page.click( '#doaction', { force: true } );
-			await page.waitForLoadState( 'domcontentloaded', {
-				timeout: 20000,
-			} );
+			await page.waitForURL(
+				( url ) => url.searchParams.get( 'stampy_bulk_done' ) === '1',
+				{ timeout: 20_000 }
+			);
 			await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
 
 			// Verify we're on the subscribers page with bulk-done flag.
@@ -218,9 +217,9 @@ test.describe( 'Admin subscribers/lists management', () => {
 			} );
 
 			// Verify the subscriber status is now "Confirmed".
-			await page.fill( '#subscriber-search-input', bulkEmail );
-			await page.click( '#search-submit', { force: true } );
-			await page.waitForLoadState( 'networkidle' );
+			await page.goto(
+				`${ TESTS_URL }/wp-admin/admin.php?page=stampy-subscribers&s=${ encodeURIComponent( bulkEmail ) }`
+			);
 
 			const statusCell = page.locator(
 				'.wp-list-table tbody tr:first-child td.column-status'
@@ -233,14 +232,11 @@ test.describe( 'Admin subscribers/lists management', () => {
 		} ) => {
 			await adminLogin( page );
 
+			// Go to the subscriber row created in the previous test
+			// (goto-loaded document, see note in the previous test).
 			await page.goto(
-				`${ TESTS_URL }/wp-admin/admin.php?page=stampy-subscribers`
+				`${ TESTS_URL }/wp-admin/admin.php?page=stampy-subscribers&s=${ encodeURIComponent( bulkEmail ) }`
 			);
-
-			// Search for the subscriber created in the previous test.
-			await page.fill( '#subscriber-search-input', bulkEmail );
-			await page.click( '#search-submit', { force: true } );
-			await page.waitForLoadState( 'networkidle' );
 
 			// Check the checkbox.
 			// page.check() can silently fail on WP admin checkboxes — use evaluate + click.
@@ -269,15 +265,16 @@ test.describe( 'Admin subscribers/lists management', () => {
 
 			// Apply.
 			await page.click( '#doaction', { force: true } );
-			await page.waitForLoadState( 'domcontentloaded', {
-				timeout: 20000,
-			} );
+			await page.waitForURL(
+				( url ) => url.searchParams.get( 'stampy_bulk_done' ) === '1',
+				{ timeout: 20_000 }
+			);
 			await page.waitForSelector( '#wpadminbar', { timeout: 20000 } );
 
 			// Verify the subscriber status is now "Unsubscribed".
-			await page.fill( '#subscriber-search-input', bulkEmail );
-			await page.click( '#search-submit', { force: true } );
-			await page.waitForLoadState( 'networkidle' );
+			await page.goto(
+				`${ TESTS_URL }/wp-admin/admin.php?page=stampy-subscribers&s=${ encodeURIComponent( bulkEmail ) }`
+			);
 
 			const statusCell = page.locator(
 				'.wp-list-table tbody tr:first-child td.column-status'
