@@ -113,10 +113,19 @@ jobs:
           name: stampy-${{ github.ref_name }}
           path: /tmp/stampy-*.zip
 
+      - name: Generate release notes
+        id: release_notes
+        uses: orhun/git-cliff-action@v4
+        with:
+          config: 'github'
+          args: '--latest --strip header'
+        env:
+          GITHUB_REPO: ${{ github.repository }}
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v3
         with:
           files: /tmp/stampy-*.zip
-          generate_release_notes: true
+          body: ${{ steps.release_notes.outputs.content }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
